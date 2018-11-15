@@ -1,0 +1,5 @@
+Thanks for installing the WrapAsYouType plugin!  For WrapAsYouType to operate,
+you need to set the "wrap_as_you_type_sections" setting.  See the following
+webpage for details:
+
+https://github.com/btrekkie/WrapAsYouType#quick-start
