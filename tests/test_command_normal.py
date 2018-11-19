@@ -248,38 +248,16 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
         settings.set(
             'wrap_as_you_type_sections', [
                 {
-                    'selector_rules': [
-                        # Sublime 3
-                        {
-                            'and': [
-                                'comment.block',
-                                {'not': 'punctuation.definition.comment'},
-                            ],
-                        },
-
-                        # Sublime 2
-                        {
-                            'and': [
-                                [
-                                    'string.quoted.double.block',
-                                    'string.quoted.single.block',
-                                ],
-                                {'not': 'punctuation.definition.string'},
-                            ],
-                        },
-                    ],
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
                     'wrap_width': 72
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '#',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                     'wrap_width': 79,
                 },
             ])

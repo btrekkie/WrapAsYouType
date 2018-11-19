@@ -236,28 +236,17 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
             'wrap_as_you_type_sections', [
                 {
                     'line_start': ' * ',
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {
-                                'not': [
-                                    'punctuation.definition.comment.begin',
-                                    'punctuation.definition.comment.end',
-                                ],
-                            },
-                        ],
-                    },
+                    'selector':
+                        'comment.block - '
+                        '(punctuation.definition.comment.begin | '
+                        'punctuation.definition.comment.end)',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])
         settings.set(

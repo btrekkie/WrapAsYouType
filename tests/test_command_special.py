@@ -15,42 +15,26 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
             'wrap_as_you_type_sections', [
                 {
                     'line_start': ' * ',
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {
-                                'not': [
-                                    'comment.block.documentation',
-                                    'punctuation.definition.comment',
-                                ],
-                            },
-                        ],
-                    },
+                    'selector':
+                        'comment.block - (comment.block.documentation | '
+                        'punctuation.definition.comment)',
                 },
                 {
                     # For kicks, put the line start in an allowed_line_starts
                     # list
                     'allowed_line_starts': ['///'],
 
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
-                    'selector_rules': 'comment.block.documentation',
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
+                    'selector': 'comment.block.documentation',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ]
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])
         settings.set('rulers', [60, 80])
@@ -191,23 +175,15 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
         settings.set(
             'wrap_as_you_type_sections', [
                 {
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {'not': 'punctuation.definition.comment'},
-                        ],
-                    },
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])
         settings.set('rulers', [60, 50])
@@ -472,23 +448,15 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
             'wrap_as_you_type_sections', [
                 {
                     'line_start': ' \t ',
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {'not': 'punctuation.definition.comment'},
-                        ],
-                    },
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])
         settings.set('rulers', [60])
@@ -568,23 +536,15 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
             'wrap_as_you_type_sections', [
                 {
                     'line_start': ' * ',
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {'not': 'punctuation.definition.comment'},
-                        ],
-                    },
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'allowed_line_starts': ['// ', '/// '],
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])
         settings.set('rulers', [60])
@@ -1080,11 +1040,7 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
         view.set_syntax_file('Packages/Text/Plain text.tmLanguage')
         settings = view.settings()
         settings.set(
-            'wrap_as_you_type_sections', [
-                {
-                    'selector_rules': {'and': []},
-                },
-            ])
+            'wrap_as_you_type_sections', [{'selector': 'source | text'}])
         settings.set('rulers', [60])
 
         self._insert(

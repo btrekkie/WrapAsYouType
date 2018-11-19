@@ -182,22 +182,13 @@ should set it as a syntax-specific setting, by going to "Preferences" >
     "wrap_as_you_type_sections": [
         {
             "line_start": " * ",
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {"not": "punctuation.definition.comment"}
-                ]
-            }
+            "selector": "comment.block - punctuation.definition.comment"
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "//",
-            "selector_rules": "comment.line"
+            "selector": "comment.line"
         }
     ]
 }
@@ -216,54 +207,42 @@ following entries:
   It is an error to include both an `"allowed_line_starts"` entry and a
   `"line_start"` entry.
 * `"wrap_width"` (optional): The wrap width for this section type.
-* `"selector_rules"`: A "rule set" for identifying text that is in the section.
-  See below for details.
-* `"combining_selector_rules"` (optional): A "rule set" for extending a section.
-  See below for details.
+* `"selector"`: A selector for identifying text that is in the section.  See
+  below for details.
+* `"combining_selector"` (optional): A selector for extending a section.  See
+  below for details.
 
-The location of a section is described using a "rule set," which is a
-high-level construct that makes use of
-[Sublime selectors](https://www.sublimetext.com/docs/3/scope_naming.html).  A
-rule set indicates whether we match a given set of scope names.  For example, a
-rule set may be used to determine whether the scope
-`"source.c++ meta.class.c++ meta.block.c++ comment.block.c"` is a match.  To see
-the scope names at a given point in a document, use the `"show_scope_name"`
-command.  By default, this is bound to Ctrl+Shift+P on macOS and
-Ctrl+Alt+Shift+P on Linux and Windows.
+The location of a section is described using Sublime selectors.  A selector
+indicates whether we match a given set of
+[scope names](https://www.sublimetext.com/docs/3/scope_naming.html).  For
+example, a selector may be used to determine whether the scope `"source.c++
+meta.class.c++ meta.block.c++ comment.block.c"` is a match.  To see the scope
+names at a given point in a document, use the `"show_scope_name"` command.  By
+default, this is bound to Ctrl+Shift+P on macOS and Ctrl+Alt+Shift+P on Linux
+and Windows.
 
-A "rule set" is defined to be any of the following:
-
-* A string indicating the selector to check.  A scope matches if one of the
-  scope names is equal to the selector, or starts with the selector followed by
-  a dot.
-* An array of rule sets.  A scope matches the array if it matches any of its
-  elements.
-* An object `{"or": rule_sets}`, where `rule_sets` is an array.  A scope
-  matches if it matches any of the array's elements.  This is equivalent to
-  simply `rule_sets`, per the preceding bullet point; it's just longer and more
-  explicit.
-* An object `{"and": rule_sets}`, where `rule_sets` is an array.  A scope
-  matches if it matches all of the array's elements.
-* An object `{"not": rule_set}`.  A scope matches if it does not match
-  `rule_set`.
+A simple selector (such as `"comment.block"`) matches a scope if any of the
+scope names is equal to the selector, or starts with the selector followed by a
+dot.  Simple selectors can be composed into complex selectors using `|` (or),
+`&` (and), and `-` (subtraction), as well as parentheses.
 
 To determine whether a given starting position is inside a given section, we
-check whether it matches the `"selector_rules"` rule set.  From there, the
-section extends forwards and backwards to include positions that also match the
-`"selector_rules"` rule set, or that match the `"combining_selector_rules"` rule
-set, if there is one.  The section stops extending in the forwards and backwards
-directions once we reach positions that do not match either of the rule sets.
+check whether it matches the `"selector"` entry.  From there, the section
+extends forwards and backwards to include positions that also match the
+`"selector"` entry, or that match the `"combining_selector"` entry, if there is
+one.  The section stops extending in the forwards and backwards directions once
+we reach positions that do not match either of the selectors.
 
-The motivation behind having a separate `"combining_selector_rules"` rule set is
-to support word wrapping within sequences of indented single-line comments.  The
+The motivation behind having a separate `"combining_selector"` entry is to
+support word wrapping within sequences of indented single-line comments.  The
 single-line comments themselves match the `"comment.line"` selector, but the
 indentation does not match that selector.  We must have some way of treating all
 of these comments as part of a single combined section; hence,
-`"combining_selector_rules"`.
+`"combining_selector"`.
 
 The above sample value of `"wrap_as_you_type_sections"` illustrates how we can
 combine consecutive line comments into a single section.  The
-`"combining_selector_rules"` rule set matches any text that does not contain
+`"combining_selector"` entry matches any source code that does not contain
 various code elements; i.e. it only matches whitespace.  This instructs
 WrapAsYouType to combine a sequence of line comments separated by nothing but
 whitespace into a single section.
@@ -273,23 +252,14 @@ whitespace into a single section.
 {
     "wrap_as_you_type_sections": [
         {
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {"not": "punctuation.definition.comment"}
-                ]
-            },
+            "selector": "comment.block - punctuation.definition.comment",
             "wrap_width": 72
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "#",
-            "selector_rules": "comment.line",
+            "selector": "comment.line",
             "wrap_width": 79
         }
     ],
@@ -305,7 +275,7 @@ whitespace into a single section.
 This example applies to Python files in version 3 of Sublime Text.  Here, we
 specify different `"wrap_width"` values for block comments and line comments.
 This way, we wrap line comments at 79 columns and block comments at 72 columns,
-per the recommendations in [PEP8](https://www.python.org/dev/peps/pep-0008/).
+per the recommendations in [PEP 8](https://www.python.org/dev/peps/pep-0008/).
 
 Note that in Python, it is recommended to start a block comment with a concise
 description of the commented element, on the same line as the opening `"""`.
@@ -318,26 +288,15 @@ of a section, unless the section includes the entire first line.
 {
     "wrap_as_you_type_sections": [
         {
-            "selector_rules": {
-                "and": [
-                    [
-                        "string.quoted.double.block",
-                        "string.quoted.single.block"
-                    ],
-                    {"not": "punctuation.definition.string"}
-                ]
-            },
+            "selector":
+                "(string.quoted.double.block | string.quoted.single.block) - punctuation.definition.string",
             "wrap_width": 72
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "#",
-            "selector_rules": "comment.line",
+            "selector": "comment.line",
             "wrap_width": 79
         }
     ],
@@ -361,22 +320,13 @@ causing WrapAsYouType to wrap all triple-quoted strings, not just docstrings.
     "wrap_as_you_type_sections": [
         {
             "line_start": " * ",
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {"not": "punctuation.definition.comment"}
-                ]
-            }
+            "selector": "comment.block - punctuation.definition.comment"
         },
         {
             "allowed_line_starts": ["// ", "/// ", "//! "],
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
-            "selector_rules": "comment.line"
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
+            "selector": "comment.line"
         }
     ]
 }
@@ -398,11 +348,7 @@ the earliest matching line start in the earliest matching section type.
 ### Example, wrap the entire document
 ```json
 {
-    "wrap_as_you_type_sections": [
-        {
-            "selector_rules": {"and": []}
-        }
-    ]
+    "wrap_as_you_type_sections": [{"selector": "source | text"}]
 }
 ```
 
@@ -412,12 +358,7 @@ the earliest matching line start in the earliest matching section type.
     "wrap_as_you_type_sections": [
         {
             "line_start": " * ",
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {"not": "punctuation.definition.comment"}
-                ]
-            }
+            "selector": "comment.block - punctuation.definition.comment"
         }
     ]
 }
@@ -429,27 +370,14 @@ the earliest matching line start in the earliest matching section type.
     "wrap_as_you_type_sections": [
         {
             "line_start": " * ",
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {
-                        "not": [
-                            "punctuation.definition.comment.begin",
-                            "punctuation.definition.comment.end"
-                        ]
-                    }
-                ]
-            }
+            "selector":
+                "comment.block - (punctuation.definition.comment.begin | punctuation.definition.comment.end)"
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "//",
-            "selector_rules": "comment.line"
+            "selector": "comment.line"
         }
     ]
 }
@@ -460,14 +388,10 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "#",
-            "selector_rules": "comment.line"
+            "selector": "comment.line"
         }
     ]
 }
@@ -479,37 +403,20 @@ the earliest matching line start in the earliest matching section type.
     "wrap_as_you_type_sections": [
         {
             "line_start": " * ",
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {
-                        "not": [
-                            "comment.block.documentation",
-                            "punctuation.definition.comment"
-                        ]
-                    }
-                ]
-            }
+            "selector":
+                "comment.block - (comment.block.documentation | punctuation.definition.comment)"
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "///",
-            "selector_rules": "comment.block.documentation"
+            "selector": "comment.block.documentation"
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "//",
-            "selector_rules": "comment.line"
+            "selector": "comment.line"
         }
     ]
 }
@@ -520,22 +427,13 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "selector_rules": {
-                "and": [
-                    "comment.block",
-                    {"not": "punctuation.definition.comment"}
-                ]
-            }
+            "selector": "comment.block - punctuation.definition.comment"
         },
         {
-            "combining_selector_rules": {
-                "not": [
-                    "comment", "constant", "entity", "invalid", "keyword",
-                    "punctuation", "storage", "string", "variable"
-                ]
-            },
+            "combining_selector":
+                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "#",
-            "selector_rules": "comment.line"
+            "selector": "comment.line"
         }
     ]
 }

@@ -94,22 +94,14 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
             'wrap_as_you_type_sections', [
                 {
                     'line_start': ' * ',
-                    'selector_rules': {
-                        'and': [
-                            'comment.block',
-                            {'not': 'punctuation.definition.comment'},
-                        ],
-                    },
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
                 },
                 {
-                    'combining_selector_rules': {
-                        'not': [
-                            'comment', 'constant', 'entity', 'invalid',
-                            'keyword', 'punctuation', 'storage', 'string',
-                            'variable',
-                        ],
-                    },
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector_rules': 'comment.line',
+                    'selector': 'comment.line',
                 },
             ])

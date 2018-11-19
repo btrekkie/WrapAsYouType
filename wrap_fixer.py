@@ -2,15 +2,14 @@ import re
 import sys
 
 from sublime import Region
+import sublime
 import sublime_plugin
 
 if sys.version_info[0] >= 3:
     from .error import UserFacingError
-    from .section import Section
     from .util import Util
 else:
     from error import UserFacingError
-    from section import Section
     from util import Util
 
 
@@ -39,10 +38,6 @@ class WrapFixer(sublime_plugin.TextCommand):
     # i_line_start, followed by all of the subsequent whitespace on that line,
     # up to the first non-whitespace character or the end of the line.
     #
-    # In my testing, the matching methods
-    # Section.matches_[combining_]selector_rules take a large portion of the
-    # time spent in _gen_edits().
-    #
     # Private attributes:
     #
     # Generator<tuple<Region, str>> _edits_gen - A coroutine that yields the
@@ -66,15 +61,17 @@ class WrapFixer(sublime_plugin.TextCommand):
     #     "wrap_as_you_type_paragraphs" setting during the most recent call to
     #     _gen_edits().  This is None if we have not called _gen_edits() or
     #     there is no such setting.
-    # list<Section> _sections - The Section objects for _sections_setting, in
-    #     the order in which they appear in _sections_setting.  This is [] if
+    # list<dict<str, object>> _sections - Equivalent to _sections_setting, but
+    #     with any "line_start" entries replaced with single-element
+    #     "allowed_line_starts" entries, and with missing "wrap_width" and
+    #     "combining_selector" entries replaced with None.  This is [] if
     #     _sections_setting is not a valid value for
     #     "wrap_as_you_type_sections".
     # object _sections_setting - The value of the "wrap_as_you_type_sections"
     #     setting during the most recent call to _gen_edits().  This is None if
     #     we have not called _gen_edits() or there is no such setting.
     # list<dict<str, object>> _space_between_words - Equivalent to
-    #     _space_between_word_settings, but with the "first_word_regex" and
+    #     _space_between_words_setting, but with the "first_word_regex" and
     #     "second_word_regex" entries replaced with re.Patterns instead of
     #     strings (the result of calling re.compile on the entries), and with
     #     missing "first_word_regex" and "second_word_regex" entries replaced
@@ -125,39 +122,6 @@ class WrapFixer(sublime_plugin.TextCommand):
         self._edits_gen = None
         self._first_edit = None
 
-    def _validate_selector_rules(self, rules):
-        """Raise a UserFacingError if the specified selector rules are invalid.
-
-        Raise a UserFacingError if the specified object is not a valid
-        selector rule set.
-        """
-        if isinstance(rules, list):
-            for sub_rules in rules:
-                self._validate_selector_rules(sub_rules)
-        elif isinstance(rules, dict):
-            if len(rules) != 1:
-                raise UserFacingError(
-                    'Objects appearing in selector rules must have exactly '
-                    'one entry: "and", "or", or "not"')
-            key, value = list(rules.items())[0]
-
-            if key == 'not':
-                self._validate_selector_rules(value)
-            elif key in ('and', 'or'):
-                if not isinstance(value, list):
-                    raise UserFacingError(
-                        'In an object appearing in selector rules, the value '
-                        'associated with "{0:s}" must be an array'.format(key))
-                for sub_rules in value:
-                    self._validate_selector_rules(sub_rules)
-            else:
-                raise UserFacingError(
-                    'Invalid selector rules operation / object key '
-                    '"{0:s}"'.format(key))
-        elif not Util.is_string(rules):
-            raise UserFacingError(
-                'Selector rules must consist of strings, arrays, and objects')
-
     def _validate_and_compile_regex(self, pattern):
         """Return the result of compiling the specified regular expression.
 
@@ -185,20 +149,20 @@ class WrapFixer(sublime_plugin.TextCommand):
         UserFacingError (and set _sections to []) if the setting is
         invalid.
         """
-        section_settings = self._view.settings().get(
+        section_setting = self._view.settings().get(
             'wrap_as_you_type_sections')
-        if section_settings == self._sections_setting:
+        if section_setting == self._sections_setting:
             return
-        self._sections_setting = section_settings
+        self._sections_setting = section_setting
         self._sections = []
-        if section_settings is None:
+        if section_setting is None:
             return
 
-        if not isinstance(section_settings, list):
+        if not isinstance(section_setting, list):
             raise UserFacingError(
                 '"wrap_as_you_type_sections" must be an array')
         sections = []
-        for section in section_settings:
+        for section in section_setting:
             if not isinstance(section, dict):
                 raise UserFacingError(
                     'The elements of "wrap_as_you_type_sections" must be '
@@ -236,20 +200,23 @@ class WrapFixer(sublime_plugin.TextCommand):
             else:
                 allowed_line_starts = ['']
 
-            if 'selector_rules' not in section:
-                raise UserFacingError('Missing "selector_rules" entry')
-            selector_rules = section['selector_rules']
-            self._validate_selector_rules(selector_rules)
+            if 'selector' not in section:
+                raise UserFacingError('Missing "selector" entry')
+            selector = section['selector']
+            if not Util.is_string(selector):
+                raise UserFacingError('"selector" must be a string')
 
-            combining_selector_rules = section.get(
-                'combining_selector_rules', selector_rules)
-            if 'combining_selector_rules' in selector_rules:
-                self._validate_selector_rules(combining_selector_rules)
+            combining_selector = section.get('combining_selector', selector)
+            if ('combining_selector' in section and
+                    not Util.is_string(combining_selector)):
+                raise UserFacingError('"combining_selector" must be a string')
 
-            sections.append(
-                Section(
-                    wrap_width, allowed_line_starts, selector_rules,
-                    combining_selector_rules))
+            sections.append({
+                'allowed_line_starts': allowed_line_starts,
+                'combining_selector': combining_selector,
+                'selector': selector,
+                'wrap_width': wrap_width,
+            })
         self._sections = sections
 
     def _update_word_regex(self):
@@ -489,13 +456,17 @@ class WrapFixer(sublime_plugin.TextCommand):
         return len(line)
 
     def _wrap_width(self, section):
-        """Return the wrap width of the specified Section.
+        """Return the wrap width of the specified section.
 
-        If section.wrap_width is None, this method uses the appropriate
-        fallback.
+        If section['wrap_width'] is None, this method uses the
+        appropriate fallback.
+
+        dict<str, object> section - The section, formatted like the
+            elements of _sections.
+        return int - The wrap width.
         """
-        if section.wrap_width is not None:
-            return section.wrap_width
+        if section['wrap_width'] is not None:
+            return section['wrap_width']
         settings = self._view.settings()
         wrap_width = settings.get('wrap_width')
         if wrap_width:
@@ -764,22 +735,21 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Return the furthest that we can combine a section.
 
         Return the furthest point that we can combine first_point with
-        in the specified section, as in
-        section.matches_combining_selector_rules and
-        section.matches_selector_rules, as we move from first_point to
+        in the specified section, based on section['combining_selector']
+        and section['selector'], as we move from first_point to
         second_point.  So if second_point > first_point, this is the
         latest point that is no later than second_point that we can
         combine with first_point, and vice versa if second_point <
         first_point.  _combine_extent does not check whether first_point
         matches the section (as in _point_matches_selector).
 
-        Section section - The section.
+        dict<str, object> section - The section, formatted like the
+            elements of _sections.
         int first_point - The starting point.
         int second_point - The ending point.
         return int - The furthest point we can combine.
         """
-        # Determine the range of points on which to check
-        # matches_[combining_]selector_rules
+        # Determine the range of points on which to check score_selector
         view = self._view
         if first_point >= second_point:
             points = range(first_point - 1, second_point - 1, -1)
@@ -794,11 +764,13 @@ class WrapFixer(sublime_plugin.TextCommand):
             scope = view.scope_name(point)
             if scope == prev_scope:
                 # Optimization: Avoid relatively expensive calls to
-                # matches_[combining_]selector_rules
+                # score_selector
                 continue
 
-            if (not section.matches_selector_rules(scope) and
-                    not section.matches_combining_selector_rules(scope)):
+            if (sublime.score_selector(scope, section['selector']) == 0 and
+                    (section['combining_selector'] is None or
+                        sublime.score_selector(
+                            scope, section['combining_selector']) == 0)):
                 if first_point >= second_point:
                     return point + 1
                 elif view.rowcol(point)[1] > 0:
@@ -817,13 +789,13 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Return whether we can combine the specified points.
 
         Return whether we can combine second_point with first_point in
-        the specified section, as in
-        section.matches_combining_selector_rules and
-        section.matches_selector_rules, by moving from first_point to
+        the specified section, based on section['combining_selector']
+        and section['selector'], by moving from first_point to
         second_point.  _are_combined does not check whether first_point
         matches the section (as in _point_matches_selector).
 
-        Section section - The section.
+        dict<str, object> section - The section, formatted like the
+            elements of _sections.
         int first_point - The starting point.
         int second_point - The ending point.
         return bool - Whether we can combine second_point with
@@ -861,14 +833,15 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Return whether a position with the given scopes matches "section".
 
         Return whether a position with the specified preceding and
-        succeeding scopes matches "section", as in
-        section.matches_selector_rules.
+        succeeding scopes matches "section", based on
+        section['selector'].
 
         We should conceive of a match as being performed not on a
         character, but on the point between two characters.  See the
         comments for _point_matches_selector for more information.
 
-        Section section - The section.
+        dict<str, object> section - The section, formatted like the
+            elements of _sections.
         str prev_char_scope - The result of calling _prev_char_scope on
             the position.
         str next_char_scope - The scope of the succeeding character, as
@@ -877,14 +850,15 @@ class WrapFixer(sublime_plugin.TextCommand):
         """
         return (
             (prev_char_scope is not None and
-                section.matches_selector_rules(prev_char_scope)) or
-            section.matches_selector_rules(next_char_scope))
+                sublime.score_selector(
+                    prev_char_scope, section['selector']) > 0) or
+            sublime.score_selector(next_char_scope, section['selector']) > 0)
 
     def _point_matches_selector(self, section, point, line_region):
         """Return whether the specified point matches "section".
 
-        Return whether the specified point matches "section", as in
-        section.matches_selector_rules.
+        Return whether the specified point matches "section", based on
+        section['selector'].
 
         We should conceive of a match as being performed not on a
         character, but on the point between two characters.  For
@@ -894,7 +868,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         that is immediately after the */ is in the block comment, even
         though the succeeding character is not.
 
-        Section section - The section.
+        dict<str, object> section - The section, formatted like the
+            elements of _sections.
         int point - The position.
         Region line_region - The value of _view.line(point).
         return bool - Whether the position matches.
@@ -967,7 +942,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         individual lines; they may be portions of the document that we
         are considering as if they were consecutive lines.
 
-        Section section - The current section.
+        dict<str, object> section - The current section, formatted like
+            the elements of _sections.
         int point - The current position.  This must be in
             first_line_region or second_line_region.
         str first_line - The text of the first line.
@@ -1052,7 +1028,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         rather, like editing soft-wrapped content that doesn't have any
         indentation or line start).
 
-        Section section - The section we are attempting to use.
+        dict<str, object> section - The section we are attempting to
+            use, formatted like the elements of _sections.
         int point - The position of the selection cursor.
         str line_start - The line start we are attempting to use.
         str line - The value of _view.substr(line_region).
@@ -1162,7 +1139,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         user (or rather, like editing soft-wrapped content that doesn't
         have any indentation or line start).
 
-        Section section - The current section.
+        dict<str, object> section - The current section, formatted like
+            the elements of _sections.
         int point - The position.
         str line_start - The line start.
         return tuple<Region, str> - The edit, if any.
@@ -1210,7 +1188,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         the added line.  This method returns (None, None) if we should
         not perform a split operation.
 
-        Section section - The current section.
+        dict<str, object> section - The current section, formatted like
+            the elements of _sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1304,7 +1283,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         "point".  This method returns (None, None) if we should not
         perform a join operation.
 
-        Section section - The current section.
+        dict<str, object> section - The current section, formatted like
+            the elements of _sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1387,7 +1367,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         This method returns (None, None) if we should not perform a join
         operation.
 
-        Section section - The current section.
+        dict<str, object> section - The current section, formatted like
+            the elements of _sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1401,21 +1382,22 @@ class WrapFixer(sublime_plugin.TextCommand):
             return (None, None)
 
     def _find_section(self, point):
-        """Compute the Section containing the specified position, if any.
+        """Compute the section containing the specified position, if any.
 
-        Return a triple whose first element is the Section containing
-        the specified position, if any.  The second element is the line
-        start, and the third element is the result of
+        Return a triple whose first element is the section containing
+        the specified position, formatted like the elements of
+        _sections, if any.  The second element is the line start, and
+        the third element is the result of
         _should_erase_preceding_line_break.  (If the third element is
-        True, then the Section contains a position in the previous line
-        instead of "point".)  If there are multiple matching Sections
-        and line starts, then we take the Section that is earliest in
+        True, then the section contains a position in the previous line
+        instead of "point".)  If there are multiple matching sections
+        and line starts, then we take the section that is earliest in
         _sections and the line start that is earliest in the section's
-        allowed_line_starts field.  Return (None, None, False) if there
-        is no section containing "point".
+        'allowed_line_starts' entry.  Return (None, None, False) if
+        there is no section containing "point".
 
         int point - The position.
-        return tuple<Section, str, bool> - The result.
+        return tuple<dict<str, object>, str, bool> - The result.
         """
         # Compute information about the current line
         view = self._view
@@ -1442,7 +1424,7 @@ class WrapFixer(sublime_plugin.TextCommand):
 
         # Find the first matching section
         for section in self._sections:
-            for line_start in section.allowed_line_starts:
+            for line_start in section['allowed_line_starts']:
                 # We check _should_erase_preceding_line_break separately,
                 # because it checks for the line start on the previous line
                 # instead of the current line
