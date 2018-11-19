@@ -9,9 +9,9 @@ Note that you must set the `"wrap_as_you_type_sections"` setting for
 WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 
 # Table of contents
-
 * [Features](#features)
 * [Limitations](#limitations)
+* [Installation](#installation)
 * [Quick start](#quick-start)
 * [Description](#description)
 * [Settings](#settings)
@@ -55,17 +55,25 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 * Could misbehave if used simultaneously with another Sublime plugin that also
   modifies a document in response to changes to the document.
 
-# Quick start
-To install WrapAsYouType, copy the `WrapAsYouType` folder to your Sublime
-installation's packages directory.  On macOS, this is `~/Library/Application
-Support/Sublime Text 3/Packages`.  On Linux, it is
+# Installation
+You can install the WrapAsYouType plugin using Package Control.  If you haven't
+already, install Package Control by following the instructions on
+<https://packagecontrol.io/installation>.  Open Sublime and bring up the command
+palette, by pressing Super+Shift+P on macOS or Ctrl+Shift+P on Linux or Windows.
+Select "Package Control: Install Package", then "WrapAsYouType".
+
+Alternatively, you can install WrapAsYouType manually by downloading (cloning)
+it into your Sublime installation's packages directory.  On macOS, this is
+`~/Library/Application Support/Sublime Text 3/Packages`.  On Linux, it is
 `~/.config/sublime-text-3/Packages`.  On Windows, it is
 `%appdata%\Sublime Text 3\Packages`.  (For Sublime 2, replace `"3"` with `"2"`.)
 
-Once installed, open the syntax-specific settings of your favorite file type.
-To do so, open a file of the desired type (e.g. a `*.java` file).  In the menu
-bar, go to "Preferences" > "Settings - Syntax Specific" (in Sublime 2, it's
-"Preferences" > "Settings - More" > "Syntax Specific - User").
+# Quick start
+After [installing WrapAsYouType](#installation), open the syntax-specific
+settings of your favorite file type.  To do so, open a file of the desired type
+(e.g. a `*.java` file).  In the menu bar, go to "Preferences" > "Settings -
+Syntax Specific" (in Sublime 2, it's "Preferences" > "Settings - More" > "Syntax
+Specific - User").
 
 Then, set the `"wrap_as_you_type_sections"` setting to one of the sample values.
 To do so, click one of the following links, copy-paste the example configuration
