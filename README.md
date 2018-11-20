@@ -33,7 +33,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   * [`"wrap_as_you_type_disabled"`](#wrap_as_you_type_disabled)
 * [Comparison with Auto (Hard) Wrap](#comparison-with-auto-hard-wrap)
 
-# Features
+# <a id="features"></a>Features
 * Compatible with Sublime Text 2 and 3.
 * Performs hard word wrapping in real time.
 * Changes to the middle of a paragraph can result in reflowing the rest of the
@@ -47,7 +47,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   in C++ block comments, the user may want to start each line with `" * "`.
 * Provides additional settings for further customization.
 
-# Limitations
+# <a id="limitations"></a>Limitations
 * Not likely to be useful for automatically wrapping code or similar non-text
   content.
 * Only operates when there is a single selection cursor and nothing is selected.
@@ -55,7 +55,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 * Could misbehave if used simultaneously with another Sublime plugin that also
   modifies a document in response to changes to the document.
 
-# Installation
+# <a id="installation"></a>Installation
 You can install the WrapAsYouType plugin using Package Control.  If you haven't
 already, install Package Control by following the instructions on
 <https://packagecontrol.io/installation>.  Open Sublime and bring up the command
@@ -68,7 +68,7 @@ it into your Sublime installation's packages directory.  On macOS, this is
 `~/.config/sublime-text-3/Packages`.  On Windows, it is
 `%appdata%\Sublime Text 3\Packages`.  (For Sublime 2, replace `"3"` with `"2"`.)
 
-# Quick start
+# <a id="quick-start"></a>Quick start
 After [installing WrapAsYouType](#installation), open the syntax-specific
 settings of your favorite file type.  To do so, open a file of the desired type
 (e.g. a `*.java` file).  In the menu bar, go to "Preferences" > "Settings -
@@ -99,7 +99,7 @@ into your syntax-specific settings, and save.
 * [Scala](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
 * [Other](#additional-notes)
 
-# Description
+# <a id="description"></a>Description
 WrapAsYouType automatically performs hard word wrapping within specified
 sections of a file, in real time as the user types.  For example, WrapAsYouType
 could limit lines of C++ code contained in block comments (between `/*` and
@@ -176,15 +176,15 @@ Example:
 ]
 ```
 
-# Settings
-## `"wrap_as_you_type_sections"`
+# <a id="settings"></a>Settings
+## <a id="wrap_as_you_type_sections"></a>`"wrap_as_you_type_sections"`
 `"wrap_as_you_type_sections"` is a critical setting that informs WrapAsYouType
 of where in the document to perform word wrapping.  You must set
 `"wrap_as_you_type_sections"` for WrapAsYouType to operate.  Typically, you
 should set it as a syntax-specific setting, by going to "Preferences" >
 "Settings - Syntax Specific" in the menu bar.
 
-### Example, C, C++, Go, JavaScript, Objective-C, PHP, Scala, and similar
+### <a id="example-c-c-go-javascript-objective-c-php-scala-and-similar"></a>Example, C, C++, Go, JavaScript, Objective-C, PHP, Scala, and similar
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -255,7 +255,7 @@ various code elements; i.e. it only matches whitespace.  This instructs
 WrapAsYouType to combine a sequence of line comments separated by nothing but
 whitespace into a single section.
 
-### Example, Python in Sublime 3
+### <a id="example-python-in-sublime-3"></a>Example, Python in Sublime 3
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -291,7 +291,7 @@ With the above configuration, WrapAsYouType will not perform word wrapping on
 that summary, because WrapAsYouType does not perform wrapping on the first line
 of a section, unless the section includes the entire first line.
 
-### Example, Python in Sublime 2
+### <a id="example-python-in-sublime-2"></a>Example, Python in Sublime 2
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -322,7 +322,7 @@ docstring comments as `"comment.block"`, so we need to use
 `"string.quoted.*.block"` selectors instead.  This has the side effect of
 causing WrapAsYouType to wrap all triple-quoted strings, not just docstrings.
 
-### Example, Rust
+### <a id="example-rust"></a>Example, Rust
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -353,14 +353,14 @@ the selection cursor to match multiple allowed line starts in a given section
 type, or to match multiple section types.  If this happens, WrapAsYouType uses
 the earliest matching line start in the earliest matching section type.
 
-### Example, wrap the entire document
+### <a id="example-wrap-the-entire-document"></a>Example, wrap the entire document
 ```json
 {
     "wrap_as_you_type_sections": [{"selector": "source | text"}]
 }
 ```
 
-### Example, CSS
+### <a id="example-css"></a>Example, CSS
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -372,7 +372,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### Example, Java
+### <a id="example-java"></a>Example, Java
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -391,7 +391,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### Example, Bash, R, Ruby, and similar
+### <a id="example-bash-r-ruby-and-similar"></a>Example, Bash, R, Ruby, and similar
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -405,7 +405,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### Example, C#
+### <a id="example-c"></a>Example, C#
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -430,7 +430,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### Example, Perl
+### <a id="example-perl"></a>Example, Perl
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -447,7 +447,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### Additional notes
+### <a id="additional-notes"></a>Additional notes
 If your favorite syntax is not listed above, and you want to wrap comments, it
 shouldn't be too difficult to take an example for a similar syntax and modify it
 to work with your syntax.
@@ -493,7 +493,7 @@ comments as wrappable text.  In the example, it will move `bar3();` to the same
 line as `bar2();`, if given the chance.  This could be considered a limitation
 of WrapAsYouType.
 
-## `"wrap_as_you_type_word_regex"`
+## <a id="wrap_as_you_type_word_regex"></a>`"wrap_as_you_type_word_regex"`
 `"wrap_as_you_type_word_regex"` is a
 [Python regular expression](https://docs.python.org/3/library/re.html) used to
 determine where the words are, i.e. where WrapAsYouType is allowed to insert
@@ -548,7 +548,7 @@ or to leave any non-whitespace characters unmatched (not part of any word).  Any
 regular expression that permits this is invalid as a
 `"wrap_as_you_type_word_regex"` setting.
 
-## `"wrap_as_you_type_space_between_words"`
+## <a id="wrap_as_you_type_space_between_words"></a>`"wrap_as_you_type_space_between_words"`
 The `"wrap_as_you_type_space_between_words"` setting enables the user to specify
 custom spacing between pairs of words.
 
@@ -613,7 +613,7 @@ example, WrapAsYouType is permitted to break up "cookie-cutter" so that
 "cookie-" appears at the end of one line and "cutter" appears at the beginning
 of the next line.
 
-## `"wrap_as_you_type_paragraphs"`
+## <a id="wrap_as_you_type_paragraphs"></a>`"wrap_as_you_type_paragraphs"`
 Note: The `"wrap_as_you_type_paragraphs"` setting might be removed in a future
 release; see the discussion below.
 
@@ -701,7 +701,7 @@ matches; it doesn't support multiline constructs.  Because of these
 shortcomings, `"wrap_as_you_type_paragraphs"` might be altered or replaced with
 another setting in a future release.
 
-## `"wrap_as_you_type_disabled"`
+## <a id="wrap_as_you_type_disabled"></a>`"wrap_as_you_type_disabled"`
 `"wrap_as_you_type_disabled"` is a boolean indicating whether the WrapAsYouType
 plugin should cease to operate.  The `"toggle_wrap_as_you_type"` command inverts
 `"wrap_as_you_type_disabled"` in the current tab.
@@ -735,7 +735,7 @@ Example:
 }
 ```
 
-# Comparison with Auto (Hard) Wrap
+# <a id="comparison-with-auto-hard-wrap"></a>Comparison with Auto (Hard) Wrap
 
 WrapAsYouType is similar to the
 [Auto (Hard) Wrap](https://packagecontrol.io/packages/AutoWrap) plugin in that
