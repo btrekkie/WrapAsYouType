@@ -395,11 +395,11 @@ class WrapFixer(sublime_plugin.TextCommand):
                 'WrapAsYouType settings error; see console')
 
     def _add_width(self, width, char, tab_size):
-        r"""Return the resulting width after adding the specified character.
+        """Return the resulting width after adding the specified character.
 
         Return the width (number of columns) that results from appending
         the specified character to a line of the specified width.
-        Assume that char is not a line break character ('\n' or '\r').
+        Assume that char is not a newline character.
 
         Note that this method is conceptually faulty.  See the comments
         for _width for details.
@@ -415,11 +415,11 @@ class WrapFixer(sublime_plugin.TextCommand):
             return (width // tab_size) * tab_size + tab_size
 
     def _width(self, line):
-        r"""Return the width of the specified line of text.
+        """Return the width of the specified line of text.
 
         Return the width (number of columns) of the specified line of
-        text.  Assume that "line" does not contain any line break
-        characters ('\n' or '\r').
+        text.  Assume that "line" does not contain any newline
+        characters.
 
         Note that this method is conceptually faulty.  It assumes that
         there is one character per Unicode code point, but this is not
@@ -436,13 +436,12 @@ class WrapFixer(sublime_plugin.TextCommand):
         return width
 
     def _advance_by_width(self, line, width):
-        r"""Return the character at column "width" of "line".
+        """Return the character at column "width" of "line".
 
         Return the index of the first character in the specified line of
         text that is at or beyond the specified width (number of
         columns).  For example, _advance_by_width('foo bar', 4) returns
-        4.  Assume that "line" does not contain any line break
-        characters ('\n' or '\r').
+        4.  Assume that "line" does not contain any newline characters.
 
         Note that this method is conceptually faulty.  See the comments
         for _width for details.
@@ -478,11 +477,10 @@ class WrapFixer(sublime_plugin.TextCommand):
             return 80
 
     def _prev_line_region(self, point):
-        r"""Return the Region containing the previous line.
+        """Return the Region containing the previous line.
 
         Return the Region containing the line before the line that
-        contains "point", excluding line break characters ('\n' and
-        '\r'), if any.
+        contains "point", excluding newline characters, if any.
 
         int point - The point.
         return Region - The previous line region.
@@ -495,11 +493,10 @@ class WrapFixer(sublime_plugin.TextCommand):
             return None
 
     def _next_line_region(self, point):
-        r"""Return the Region containing the next line.
+        """Return the Region containing the next line.
 
         Return the Region containing the line after the line that
-        contains "point", excluding line break characters ('\n' and
-        '\r'), if any.
+        contains "point", excluding newline characters, if any.
 
         int point - The point.
         return Region - The next line region.
@@ -545,15 +542,15 @@ class WrapFixer(sublime_plugin.TextCommand):
         return match.span() == (0, len(str_))
 
     def _section_indent(self, line, line_start):
-        r"""Return the whitespace at the beginning of "line" before line_start.
+        """Return the whitespace at the beginning of "line" before line_start.
 
         For example, _section_indent('   * Foo', ' * ') returns '  ',
         because there are two spaces prior to the space-asterisk-space.
-        Assume that "line" does not contain any line break characters
-        ('\n' or '\r').  Return None if "line" does not start with
-        whitespace followed by line_start.  If line_start consists
-        exclusively of whitespace, so that there are multiple possible
-        matches, return the shortest possible match.
+        Assume that "line" does not contain any newline characters.
+        Return None if "line" does not start with whitespace followed by
+        line_start.  If line_start consists exclusively of whitespace,
+        so that there are multiple possible matches, return the shortest
+        possible match.
 
         str line - The line of text to match.
         str line_start - The line start.
@@ -591,22 +588,6 @@ class WrapFixer(sublime_plugin.TextCommand):
         post_indent = self._leading_whitespace(
             line, len(indent) + len(line_start))
         return line[:len(indent) + len(line_start) + len(post_indent)]
-
-    def _line_break(self):
-        r"""Return the line break string that the document is using, e.g. '\n'.
-        """
-        line_endings = self._view.line_endings()
-        if line_endings == 'Unix':
-            return '\n'
-        elif line_endings == 'Windows':
-            return '\r\n'
-        elif line_endings == 'CR':
-            return '\r'
-        else:
-            print(
-                u'WrapAsYouType warning: Unknown line endings {0:s}'.format(
-                    line_endings))
-            return '\n'
 
     def _fix_word_spans(self, raw_spans, str_):
         """Fix errors in the results of applying "wrap_as_you_type_word_regex".
@@ -1257,8 +1238,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         paragraph_indent = self._paragraph_indent(line_text)
         if paragraph_indent is None:
             paragraph_indent = ''
-        replacement_str = u'{0:s}{1:s}{2:s}'.format(
-            self._line_break(), i_line_start_i, paragraph_indent)
+        replacement_str = u'\n{0:s}{1:s}'.format(
+            i_line_start_i, paragraph_indent)
         edit = (replace_region, replacement_str)
 
         # Return the edit and the new position
