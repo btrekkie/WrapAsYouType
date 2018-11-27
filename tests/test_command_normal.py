@@ -450,3 +450,105 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
             Region(
                 comment_start_point, comment_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
+
+    def test_comment_out_lines(self):
+        """Test WrapAsYouTypeCommand when commenting out lines.
+
+        Test that WrapAsYouTypeCommand does not perform word wrapping
+        fixup when commenting out lines of code.
+        """
+        view = self._view
+        self._set_up_cpp()
+        settings = view.settings()
+        settings.set('wrap_width', 60)
+        settings.set('rulers', [80])
+
+        self._append(
+            '#include <iostream>\n'
+            '\n'
+            'using namespace std;\n'
+            '\n'
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' */\n'
+            'int fibonacci(int n) {\n'
+            '    // Base case\n'
+            '    if (n == 0) {\n'
+            '        return 0;\n'
+            '    }\n'
+            '\n'
+            '    // Iterative implementation of "fibonacci"\n'
+            '    int cur = 1;\n'
+            '    int prev = 0;\n'
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev;\n'
+            '        prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n'
+            '    return cur;\n'
+            '}\n'
+            '\n'
+            'int main() {\n'
+            '    cout << "The 8th Fibonacci number is " <<\n'
+            '        fibonacci(8) << "\\n";\n'
+            '    return 0;\n'
+            '}\n')
+
+        block_start_point = view.find(r'for \(int i', 0).begin() - 4
+        point = view.find('int next', 0).begin()
+        self._insert(point, '//')
+        point = view.find('prev = cur;', 0).begin()
+        self._set_selection_point(point)
+        view.run_command('toggle_comment')
+        point = view.find('cur = next;', 0).begin()
+        self._insert(point, '//')
+        expected_text = (
+            '    for (int i = 1; i < n; i++) {\n'
+            '        //int next = cur + prev;\n'
+            '        // prev = cur;\n'
+            '        //cur = next;\n'
+            '    }\n')
+        actual_text = view.substr(
+            Region(block_start_point, block_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        start_point = view.find('int next', 0).begin()
+        end_point = view.find('cur = next;', 0).end()
+        self._set_selection_region(Region(start_point, end_point))
+        view.run_command('toggle_comment')
+        expected_text = (
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev;\n'
+            '        prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n')
+        actual_text = view.substr(
+            Region(block_start_point, block_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        view.run_command('toggle_comment')
+        expected_text = (
+            '    for (int i = 1; i < n; i++) {\n'
+            '        // int next = cur + prev;\n'
+            '        // prev = cur;\n'
+            '        // cur = next;\n'
+            '    }\n')
+        actual_text = view.substr(
+            Region(block_start_point, block_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('cur = next;', 0).begin() + 4
+        self._set_selection_point(point)
+        view.run_command('toggle_comment')
+        point = view.find('// int next', 0).begin()
+        self._delete(point, 3)
+        expected_text = (
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev;\n'
+            '        // prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n')
+        actual_text = view.substr(
+            Region(block_start_point, block_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)

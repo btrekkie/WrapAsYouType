@@ -1,3 +1,4 @@
+import functools
 import re
 import sys
 
@@ -20,7 +21,8 @@ class WrapFixer(sublime_plugin.TextCommand):
     the vicinity of the selection cursor.  WrapFixer is the meat /
     brains of the WrapAsYouType plugin.  Each WrapFixer instance manages
     a particular View.  A WrapFixer instance assumes that the
-    on_modified() method is called whenever its view is changed.
+    on_modified(), on_post_modification(), and on_selection_modified()
+    methods are called as appropriate.
     """
 
     # The main body of wrap fixup is the _gen_edits() method.  It is a
@@ -50,51 +52,46 @@ class WrapFixer(sublime_plugin.TextCommand):
     #     has_edit() or perform_edits().
     # tuple<Region, str> _first_edit - The first edit that _edits_gen yielded.
     #     This is None if it did not yield any edits or if _edits_gen is None.
-    # list<dict<str, object>> _paragraphs - Equivalent to _paragraphs_setting,
-    #     but with the "first_line_regex" entries replaced with re.Patterns
-    #     instead of strings (the result of calling re.compile on the entries),
-    #     with default values filled in for the "indent" and "single_line"
-    #     entries, and with missing "indent_group" entries replaced with None.
-    #     This is [] if _paragraphs_setting is not a valid value for
+    # bool _is_disabled - The result of coercing the
+    #     "wrap_as_you_type_disabled" setting to a boolean.
+    # list<dict<str, object>> _paragraphs - Equivalent to the
+    #     "wrap_as_you_type_paragraphs" setting, but with the
+    #     "first_line_regex" entries replaced with re.Patterns instead of
+    #     strings (the result of calling re.compile on the entries), with
+    #     default values filled in for the "indent" and "single_line" entries,
+    #     and with missing "indent_group" entries replaced with None.  This is
+    #     [] if _paragraphs_setting is not a valid value for
     #     "wrap_as_you_type_paragraphs".
-    # object _paragraphs_setting - The value of the
-    #     "wrap_as_you_type_paragraphs" setting during the most recent call to
-    #     _gen_edits().  This is None if we have not called _gen_edits() or
-    #     there is no such setting.
-    # list<dict<str, object>> _sections - Equivalent to _sections_setting, but
-    #     with any "line_start" entries replaced with single-element
-    #     "allowed_line_starts" entries, and with missing "wrap_width" and
-    #     "combining_selector" entries replaced with None.  This is [] if
-    #     _sections_setting is not a valid value for
-    #     "wrap_as_you_type_sections".
-    # object _sections_setting - The value of the "wrap_as_you_type_sections"
-    #     setting during the most recent call to _gen_edits().  This is None if
-    #     we have not called _gen_edits() or there is no such setting.
-    # list<dict<str, object>> _space_between_words - Equivalent to
-    #     _space_between_words_setting, but with the "first_word_regex" and
-    #     "second_word_regex" entries replaced with re.Patterns instead of
-    #     strings (the result of calling re.compile on the entries), and with
-    #     missing "first_word_regex" and "second_word_regex" entries replaced
-    #     with None.  This is [] if _space_between_words_setting is not a valid
-    #     value for "wrap_as_you_type_space_between_words".
-    # object _space_between_words_setting - The value of the
-    #     "wrap_as_you_type_space_between_words" setting during the most recent
-    #     call to _gen_edits().  This is None if we have not called
-    #     _gen_edits() or there is no such setting.
+    # list<bool> _section_matches - Whether the selection cursor matches each
+    #     of the sections, as in _point_matches_selector.  This is parallel to
+    #     _sections.  All of the elements of _section_matches are True if there
+    #     isn't a single, empty selection cursor.  In the event of a
+    #     modification, _section_matches is not updated until
+    #     on_post_modification() is called.  The value of _section_matches is
+    #     unspecified if _is_disabled is True.
+    # list<dict<str, object>> _sections - Equivalent to the
+    #     "wrap_as_you_type_sections" setting, but with any "line_start"
+    #     entries replaced with single-element "allowed_line_starts" entries,
+    #     and with missing "wrap_width" and "combining_selector" entries
+    #     replaced with None.  This is [] if _sections_setting is not a valid
+    #     value for "wrap_as_you_type_sections".
+    # list<dict<str, object>> _space_between_words - Equivalent to the
+    #     "wrap_as_you_type_space_between_words" setting, but with the
+    #     "first_word_regex" and "second_word_regex" entries replaced with
+    #     re.Patterns instead of strings (the result of calling re.compile on
+    #     the entries), and with missing "first_word_regex" and
+    #     "second_word_regex" entries replaced with None.  This is [] if
+    #     _space_between_words_setting is not a valid value for
+    #     "wrap_as_you_type_space_between_words".
     # View _view - The View that this WrapFixer manages.
-    # re.Pattern _word_regex - The value re.compile(_word_regex_setting).  This
-    #     is _DEFAULT_WORD_REGEX if _word_regex_setting is None or is not a
-    #     valid value for "wrap_as_you_type_word_regex".
-    # object _word_regex_setting - The value of the
-    #     "wrap_as_you_type_word_regex" setting during the most recent call to
-    #     _gen_edits().  This is None if we have not called _gen_edits() or
-    #     there is no such setting.
+    # re.Pattern _word_regex - The value re.compile(word_regex_setting), where
+    #     "word_regex_setting" is the value of the
+    #     "wrap_as_you_type_word_regex" setting.  This is _DEFAULT_WORD_REGEX
+    #     if _word_regex_setting is None or is not a valid value for
+    #     "wrap_as_you_type_word_regex".
 
     # The default value for _word_regex
     _DEFAULT_WORD_REGEX = re.compile(r'\S+')
-
-    # Equivalent value is contractual
-    _WHITESPACE_REGEX = re.compile(r'\s*')
 
     # A regular expression for stripping whitespace from the beginning and end
     # of a string.  The result of the stripping is given by re.Match.group(1).
@@ -105,22 +102,53 @@ class WrapFixer(sublime_plugin.TextCommand):
     # whitespace.
     _TRAILING_WHITESPACE_REGEX = re.compile(r'\s*$')
 
+    # A map of all of the setting update listeners.  This is a map from setting
+    # names to the names of the methods that respond to changes in those
+    # settings.  Each method raises a UserFacingError if the setting is
+    # invalid.
+    _UPDATE_SETTINGS_FUNCS = {
+        'wrap_as_you_type_disabled': '_update_is_disabled',
+        'wrap_as_you_type_paragraphs': '_update_paragraphs',
+        'wrap_as_you_type_sections': '_update_sections',
+        'wrap_as_you_type_space_between_words': '_update_space_between_words',
+        'wrap_as_you_type_word_regex': '_update_word_regex',
+    }
+
+    # Equivalent value is contractual
+    _WHITESPACE_REGEX = re.compile(r'\s*')
+
     # A map to each WrapFixer instance from _view.id()
     _instances = {}
 
     def __init__(self, view):
         """Private constructor."""
         self._view = view
-        self._sections_setting = None
         self._sections = []
-        self._word_regex_setting = None
         self._word_regex = WrapFixer._DEFAULT_WORD_REGEX
-        self._space_between_words_setting = None
         self._space_between_words = []
-        self._paragraphs_setting = None
         self._paragraphs = []
+        self._is_disabled = True
         self._edits_gen = None
         self._first_edit = None
+        self._section_matches = []
+
+        def update_setting(setting, update_func):
+            try:
+                update_func()
+            except UserFacingError as exception:
+                print(
+                    u'WrapAsYouType error: error in "{0:s}" setting: '
+                    '{1:s}'.format(setting, str(exception)))
+                Util.status_message(
+                    view.window(), 'WrapAsYouType settings error; see console')
+
+        # Register and run settings update methods
+        settings = view.settings()
+        for setting, func_name in WrapFixer._UPDATE_SETTINGS_FUNCS.items():
+            update_func = functools.partial(
+                update_setting, setting, getattr(self, func_name))
+            settings.add_on_change(setting, update_func)
+            update_func()
 
     def _validate_and_compile_regex(self, pattern):
         """Return the result of compiling the specified regular expression.
@@ -141,19 +169,37 @@ class WrapFixer(sublime_plugin.TextCommand):
                 u'Error parsing regular expression {0:s}: {1:s}'.format(
                     pattern, str(exception)))
 
-    def _update_sections(self):
-        """Update _sections_setting and _sections.
+    def _update_section_matches(self):
+        """Update the value of _section_matches."""
+        if not self._sections or self._is_disabled:
+            return
 
-        Update _sections_setting and _sections to reflect the current
-        value of the "wrap_as_you_type_sections" setting.  Raise a
-        UserFacingError (and set _sections to []) if the setting is
-        invalid.
+        view = self._view
+        selection = view.sel()
+        if len(selection) != 1 or not selection[0].empty():
+            self._section_matches = [True] * len(self._sections)
+            return
+        point = selection[0].begin()
+
+        line_region = view.line(point)
+        prev_char_scope = self._prev_char_scope(point, line_region)
+        next_char_scope = view.scope_name(point)
+
+        self._section_matches = []
+        for section in self._sections:
+            self._section_matches.append(
+                self._matches_selector(
+                    section, prev_char_scope, next_char_scope))
+
+    def _update_sections(self):
+        """Update _sections.
+
+        Update _sections to reflect the current value of the
+        "wrap_as_you_type_sections" setting.  Raise a UserFacingError if
+        the setting is invalid.
         """
         section_setting = self._view.settings().get(
             'wrap_as_you_type_sections')
-        if section_setting == self._sections_setting:
-            return
-        self._sections_setting = section_setting
         self._sections = []
         if section_setting is None:
             return
@@ -218,38 +264,31 @@ class WrapFixer(sublime_plugin.TextCommand):
                 'wrap_width': wrap_width,
             })
         self._sections = sections
+        self._update_section_matches()
 
     def _update_word_regex(self):
-        """Update _word_regex_setting and _word_regex.
+        """Update _word_regex.
 
-        Update _word_regex_setting and _word_regex to reflect the
-        current value of the "wrap_as_you_type_word_regex" setting.
-        Raise a UserFacingError (and set _word_regex to
-        _DEFAULT_WORD_REGEX) if the setting is invalid.
+        Update _word_regex to reflect the current value of the
+        "wrap_as_you_type_word_regex" setting.  Raise a UserFacingError
+        if the setting is invalid.
         """
         word_regex_setting = self._view.settings().get(
             'wrap_as_you_type_word_regex')
-        if word_regex_setting != self._word_regex_setting:
-            self._word_regex_setting = word_regex_setting
-            self._word_regex = WrapFixer._DEFAULT_WORD_REGEX
-            if word_regex_setting is not None:
-                self._word_regex = self._validate_and_compile_regex(
-                    word_regex_setting)
+        self._word_regex = WrapFixer._DEFAULT_WORD_REGEX
+        if word_regex_setting is not None:
+            self._word_regex = self._validate_and_compile_regex(
+                word_regex_setting)
 
     def _update_space_between_words(self):
-        """Update _space_between_words_setting and _space_between_words.
+        """Update _space_between_words.
 
-        Update _space_between_words_setting and _space_between_words to
-        reflect the current value of the
+        Update _space_between_words to reflect the current value of the
         "wrap_as_you_type_space_between_words" setting.  Raise a
-        UserFacingError (and set _space_between_words to []) if the
-        setting is invalid.
+        UserFacingError if the setting is invalid.
         """
         space_between_words_setting = self._view.settings().get(
             'wrap_as_you_type_space_between_words')
-        if space_between_words_setting == self._space_between_words_setting:
-            return
-        self._space_between_words_setting = space_between_words_setting
         self._space_between_words = []
         if space_between_words_setting is None:
             return
@@ -292,18 +331,14 @@ class WrapFixer(sublime_plugin.TextCommand):
         self._space_between_words = space_between_words
 
     def _update_paragraphs(self):
-        """Update _paragraphs_setting and _paragraphs.
+        """Update _paragraphs.
 
-        Update _paragraphs_setting and _paragraphs to reflect the
-        current value of the "wrap_as_you_type_paragraphs" setting.
-        Raise a UserFacingError (and set _paragraphs to []) if the
-        setting is invalid.
+        Update _paragraphs to reflect the current value of the
+        "wrap_as_you_type_paragraphs" setting.  Raise a UserFacingError
+        if the setting is invalid.
         """
         paragraphs_setting = self._view.settings().get(
             'wrap_as_you_type_paragraphs')
-        if paragraphs_setting == self._paragraphs_setting:
-            return
-        self._paragraphs_setting = paragraphs_setting
         self._paragraphs = []
         if paragraphs_setting is None:
             return
@@ -365,34 +400,17 @@ class WrapFixer(sublime_plugin.TextCommand):
             })
         self._paragraphs = paragraphs
 
-    def _update_settings(self):
-        """Update all of the fields that are derived from the settings.
+    def _update_is_disabled(self):
+        """Update _is_disabled.
 
-        Update all of the fields that are derived from the settings:
-        _sections_setting, _sections, _word_regex_setting, etc.
+        Update _is_disabled to reflect the current value of the
+        "wrap_as_you_type_disabled" setting.
         """
-        has_error_ref = [False]
-
-        def update_setting(setting, update_func):
-            try:
-                update_func()
-            except UserFacingError as exception:
-                has_error_ref[0] = True
-                print(
-                    u'WrapAsYouType error: error in "{0:s}" setting: '
-                    '{1:s}'.format(setting, str(exception)))
-
-        update_setting('wrap_as_you_type_sections', self._update_sections)
-        update_setting('wrap_as_you_type_word_regex', self._update_word_regex)
-        update_setting(
-            'wrap_as_you_type_space_between_words',
-            self._update_space_between_words)
-        update_setting('wrap_as_you_type_paragraphs', self._update_paragraphs)
-
-        if has_error_ref[0]:
-            Util.status_message(
-                self._view.window(),
-                'WrapAsYouType settings error; see console')
+        is_disabled = bool(
+            self._view.settings().get('wrap_as_you_type_disabled'))
+        if not is_disabled and self._is_disabled:
+            self._update_section_matches()
+        self._is_disabled = is_disabled
 
     def _add_width(self, width, char, tab_size):
         """Return the resulting width after adding the specified character.
@@ -1363,19 +1381,15 @@ class WrapFixer(sublime_plugin.TextCommand):
             return (None, None)
 
     def _find_section(self, point):
-        """Compute the section containing the specified position, if any.
+        """Compute the section to use for word wrap fixup, if any.
 
-        Return a triple whose first element is the section containing
-        the specified position, formatted like the elements of
-        _sections, if any.  The second element is the line start, and
-        the third element is the result of
-        _should_erase_preceding_line_break.  (If the third element is
-        True, then the section contains a position in the previous line
-        instead of "point".)  If there are multiple matching sections
-        and line starts, then we take the section that is earliest in
-        _sections and the line start that is earliest in the section's
-        'allowed_line_starts' entry.  Return (None, None, False) if
-        there is no section containing "point".
+        Return a triple whose first element is the section to use for
+        word wrap fixup, formatted like the elements of _sections, if
+        any.  The second element is the line start, and the third
+        element is the result of _should_erase_preceding_line_break.
+        (If the third element is True, then the section contains a
+        position in the previous line instead of "point".)  Return
+        (None, None, False) if there is no matching section.
 
         int point - The position.
         return tuple<dict<str, object>, str, bool> - The result.
@@ -1404,7 +1418,7 @@ class WrapFixer(sublime_plugin.TextCommand):
             prev_line_next_char_scope = view.scope_name(prev_line_region.end())
 
         # Find the first matching section
-        for section in self._sections:
+        for section, was_match in zip(self._sections, self._section_matches):
             for line_start in section['allowed_line_starts']:
                 # We check _should_erase_preceding_line_break separately,
                 # because it checks for the line start on the previous line
@@ -1415,7 +1429,12 @@ class WrapFixer(sublime_plugin.TextCommand):
                         prev_end_point_excluding_whitespace,
                         prev_line_prev_char_scope, prev_line_next_char_scope)):
                     return (section, line_start, True)
-                elif (self._section_indent(line, line_start) is not None and
+                # If was_match is False, then we skip this section.  The
+                # reasoning is that if the user just added comment punctuation
+                # to the current line, then he is probably commenting out a
+                # line of code, and doesn't want us to perform word wrapping.
+                elif (was_match and
+                        self._section_indent(line, line_start) is not None and
                         self._matches_selector(
                             section, prev_char_scope, next_char_scope)):
                     return (section, line_start, False)
@@ -1433,6 +1452,9 @@ class WrapFixer(sublime_plugin.TextCommand):
             and indicates that any text that is in the Region should be
             replaced with the given string.
         """
+        if not self._sections:
+            return
+
         # Only perform word wrap fixup if there is a single, empty selection
         # cursor.  The main reason for this is to simplify the implementation.
         # A secondary reason is to reduce the performance overhead of
@@ -1443,10 +1465,6 @@ class WrapFixer(sublime_plugin.TextCommand):
             return
         selected_region = selection[0]
         if not selected_region.empty():
-            return
-
-        self._update_settings()
-        if not self._sections:
             return
 
         # Find the section that contains the selection cursor
@@ -1504,7 +1522,11 @@ class WrapFixer(sublime_plugin.TextCommand):
 
         This allows the WrapFixer to be garbage collected.
         """
-        WrapFixer._instances.pop(view.id(), None)
+        wrap_fixer = WrapFixer._instances.pop(view.id(), None)
+        if wrap_fixer is not None:
+            settings = view.settings()
+            for setting in WrapFixer._UPDATE_SETTINGS_FUNCS.keys():
+                settings.clear_on_change(setting)
 
     def has_edit(self):
         """Return whether there is any word wrapping fixup to perform."""
@@ -1561,3 +1583,20 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Respond to a modification to the WrapFixer's View's content."""
         self._edits_gen = None
         self._first_edit = None
+
+    def on_post_modification(self):
+        """Respond to a modification, after performing any word wrap fixup.
+
+        Respond to a modification to the WrapFixer's View's content,
+        after performing any resulting word wrap fixup.  This method is
+        not called for the modifications that comprise the actual word
+        wrap fixup, only for the original modification that triggered
+        the fixup.  This method is called if even if there was no word
+        wrap fixup to perform.
+        """
+        self._update_section_matches()
+
+    def on_selection_modified(self):
+        """Respond to a change in the position(s) of the selection cursor(s).
+        """
+        self._update_section_matches()

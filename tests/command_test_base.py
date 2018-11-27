@@ -1,7 +1,6 @@
 import unittest
 
 import sublime
-from sublime import Region
 
 
 class WrapAsYouTypeCommandTestBase(unittest.TestCase):
@@ -34,15 +33,47 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         """Append the specified string to the end of the document."""
         self._view.run_command('append', {'characters': str_})
 
-    def _set_selection(self, point):
+    def _set_selection_point(self, point):
         """Set the selection cursor to the specified position.
 
-        Replace any existing selection cursor(s).
+        Assume that there is a single selection cursor.
 
         int point - The position.
         """
-        self._view.sel().clear()
-        self._view.sel().add(Region(point, point))
+        # Do not alter self._view.sel() directly, because that prevents
+        # EventListener.on_selection_modified from being called
+        view = self._view
+        selection = view.sel()
+        if len(selection) != 1:
+            raise RuntimeError(
+                '_set_selection_point requires a single selection cursor')
+
+        if not selection[0].empty():
+            # Move the cursor to an arbitrary position, so that the selection
+            # is empty
+            view.run_command('move', {'by': 'characters', 'forward': True})
+        prev_point = selection[0].begin()
+        for i in range(abs(point - prev_point)):
+            view.run_command(
+                'move', {'by': 'characters', 'forward': point > prev_point})
+
+    def _set_selection_region(self, region):
+        """Set the selection cursor to the specified region.
+
+        Assume that there is a single selection cursor.
+
+        Region region - The region.
+        """
+        # Do not alter self._view.sel() directly, because that prevents
+        # EventListener.on_selection_modified from being called
+        self._set_selection_point(region.a)
+        for i in range(region.size()):
+            self._view.run_command(
+                'move', {
+                    'by': 'characters',
+                    'extend': True,
+                    'forward': region.b > region.a,
+                })
 
     def _insert(self, point, str_):
         """Perform the specified insert operation, one character at a time.
@@ -54,7 +85,7 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         int point - The position at which to insert.
         str str_ - The text to insert.
         """
-        self._set_selection(point)
+        self._set_selection_point(point)
         for char in str_:
             self._view.run_command('insert', {'characters': char})
 
@@ -65,7 +96,7 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         of the specified region, and then virtually pressing backspace
         until the cursor reaches the beginning of the region.
         """
-        self._set_selection(region.end())
+        self._set_selection_point(region.end())
         while self._view.sel()[0].begin() > region.begin():
             self._view.run_command('left_delete')
 
@@ -79,7 +110,7 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         int point - The position.
         int count - The number of deletes to perform.
         """
-        self._set_selection(point)
+        self._set_selection_point(point)
         for i in range(count):
             self._view.run_command('right_delete')
 

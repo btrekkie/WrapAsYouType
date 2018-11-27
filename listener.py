@@ -45,8 +45,12 @@ class WrapAsYouTypeListener(sublime_plugin.EventListener):
                     # every single keystroke.
                     wrap_fixer.has_edit()):
                 view.run_command('wrap_as_you_type')
+            wrap_fixer.on_post_modification()
         finally:
             self._is_running = False
+
+    def on_selection_modified(self, view):
+        WrapFixer.instance(view).on_selection_modified()
 
     def on_close(self, view):
         WrapFixer.clear_instance(view)

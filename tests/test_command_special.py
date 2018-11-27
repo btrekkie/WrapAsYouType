@@ -972,7 +972,7 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
 
         comment_start_point = view.find(r'/\*\*', 0).begin()
         point = view.find('The function assumes', 0).begin() - 1
-        self._set_selection(point)
+        self._set_selection_point(point)
         view.run_command(
             'insert', {
                 'characters':
@@ -995,8 +995,7 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
 
         start_point = view.find(r'1 as the first number\.', 0).end() + 1
         end_point = view.find('The function assumes', 0).begin()
-        view.sel().clear()
-        view.sel().add(Region(start_point, end_point))
+        self._set_selection_region(Region(start_point, end_point))
         view.run_command('left_delete')
         expected_text = (
             '/**\n'
@@ -1012,9 +1011,7 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
 
         start_point = view.find('begins with 0', 0).begin()
         end_point = view.find('1 as the first number', 0).end()
-        selection = view.sel()
-        selection.clear()
-        selection.add(Region(start_point, end_point))
+        self._set_selection_region(Region(start_point, end_point))
         view.run_command(
             'insert',
             {'characters': 'is the sequence 1, 1, 2, 3, 5, 8, 13, etc'})
