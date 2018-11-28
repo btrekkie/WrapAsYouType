@@ -1,4 +1,3 @@
-import functools
 import re
 import sys
 
@@ -7,10 +6,10 @@ import sublime
 import sublime_plugin
 
 if sys.version_info[0] >= 3:
-    from .error import UserFacingError
+    from .settings_parser import SettingsParser
     from .util import Util
 else:
-    from error import UserFacingError
+    from settings_parser import SettingsParser
     from util import Util
 
 
@@ -52,46 +51,14 @@ class WrapFixer(sublime_plugin.TextCommand):
     #     has_edit() or perform_edits().
     # tuple<Region, str> _first_edit - The first edit that _edits_gen yielded.
     #     This is None if it did not yield any edits or if _edits_gen is None.
-    # bool _is_disabled - The result of coercing the
-    #     "wrap_as_you_type_disabled" setting to a boolean.
-    # list<dict<str, object>> _paragraphs - Equivalent to the
-    #     "wrap_as_you_type_paragraphs" setting, but with the
-    #     "first_line_regex" entries replaced with re.Patterns instead of
-    #     strings (the result of calling re.compile on the entries), with
-    #     default values filled in for the "indent" and "single_line" entries,
-    #     and with missing "indent_group" entries replaced with None.  This is
-    #     [] if _paragraphs_setting is not a valid value for
-    #     "wrap_as_you_type_paragraphs".
     # list<bool> _section_matches - Whether the selection cursor matches each
     #     of the sections, as in _point_matches_selector.  This is parallel to
-    #     _sections.  All of the elements of _section_matches are True if there
-    #     isn't a single, empty selection cursor.  In the event of a
-    #     modification, _section_matches is not updated until
+    #     _settings_parser.sections.  All of the elements of _section_matches
+    #     are True if there isn't a single, empty selection cursor.  In the
+    #     event of a modification, _section_matches is not updated until
     #     on_post_modification() is called.  The value of _section_matches is
-    #     unspecified if _is_disabled is True.
-    # list<dict<str, object>> _sections - Equivalent to the
-    #     "wrap_as_you_type_sections" setting, but with any "line_start"
-    #     entries replaced with single-element "allowed_line_starts" entries,
-    #     and with missing "wrap_width" and "combining_selector" entries
-    #     replaced with None.  This is [] if _sections_setting is not a valid
-    #     value for "wrap_as_you_type_sections".
-    # list<dict<str, object>> _space_between_words - Equivalent to the
-    #     "wrap_as_you_type_space_between_words" setting, but with the
-    #     "first_word_regex" and "second_word_regex" entries replaced with
-    #     re.Patterns instead of strings (the result of calling re.compile on
-    #     the entries), and with missing "first_word_regex" and
-    #     "second_word_regex" entries replaced with None.  This is [] if
-    #     _space_between_words_setting is not a valid value for
-    #     "wrap_as_you_type_space_between_words".
+    #     unspecified if _settings_parser.is_disabled is True.
     # View _view - The View that this WrapFixer manages.
-    # re.Pattern _word_regex - The value re.compile(word_regex_setting), where
-    #     "word_regex_setting" is the value of the
-    #     "wrap_as_you_type_word_regex" setting.  This is _DEFAULT_WORD_REGEX
-    #     if _word_regex_setting is None or is not a valid value for
-    #     "wrap_as_you_type_word_regex".
-
-    # The default value for _word_regex
-    _DEFAULT_WORD_REGEX = re.compile(r'\S+')
 
     # A regular expression for stripping whitespace from the beginning and end
     # of a string.  The result of the stripping is given by re.Match.group(1).
@@ -102,18 +69,6 @@ class WrapFixer(sublime_plugin.TextCommand):
     # whitespace.
     _TRAILING_WHITESPACE_REGEX = re.compile(r'\s*$')
 
-    # A map of all of the setting update listeners.  This is a map from setting
-    # names to the names of the methods that respond to changes in those
-    # settings.  Each method raises a UserFacingError if the setting is
-    # invalid.
-    _UPDATE_SETTINGS_FUNCS = {
-        'wrap_as_you_type_disabled': '_update_is_disabled',
-        'wrap_as_you_type_paragraphs': '_update_paragraphs',
-        'wrap_as_you_type_sections': '_update_sections',
-        'wrap_as_you_type_space_between_words': '_update_space_between_words',
-        'wrap_as_you_type_word_regex': '_update_word_regex',
-    }
-
     # Equivalent value is contractual
     _WHITESPACE_REGEX = re.compile(r'\s*')
 
@@ -123,61 +78,27 @@ class WrapFixer(sublime_plugin.TextCommand):
     def __init__(self, view):
         """Private constructor."""
         self._view = view
-        self._sections = []
-        self._word_regex = WrapFixer._DEFAULT_WORD_REGEX
-        self._space_between_words = []
-        self._paragraphs = []
-        self._is_disabled = True
         self._edits_gen = None
         self._first_edit = None
         self._section_matches = []
+        self._settings_parser = SettingsParser(view)
 
-        def update_setting(setting, update_func):
-            try:
-                update_func()
-            except UserFacingError as exception:
-                print(
-                    u'WrapAsYouType error: error in "{0:s}" setting: '
-                    '{1:s}'.format(setting, str(exception)))
-                Util.status_message(
-                    view.window(), 'WrapAsYouType settings error; see console')
-
-        # Register and run settings update methods
-        settings = view.settings()
-        for setting, func_name in WrapFixer._UPDATE_SETTINGS_FUNCS.items():
-            update_func = functools.partial(
-                update_setting, setting, getattr(self, func_name))
-            settings.add_on_change(setting, update_func)
-            update_func()
-
-    def _validate_and_compile_regex(self, pattern):
-        """Return the result of compiling the specified regular expression.
-
-        Return the result of compiling the specified regular expression,
-        as in re.compile(pattern).  Raise UserFacingError if "pattern"
-        is not a string or is not a valid regular expression.
-
-        object pattern - The purported Python regular expression string.
-        return re.Pattern - The regular expression.
-        """
-        if not Util.is_string(pattern):
-            raise UserFacingError('Regular expressions must be strings')
-        try:
-            return re.compile(pattern)
-        except re.error as exception:
-            raise UserFacingError(
-                u'Error parsing regular expression {0:s}: {1:s}'.format(
-                    pattern, str(exception)))
+        self._settings_parser.add_on_change(
+            'wrap_as_you_type_sections', self._update_section_matches)
+        self._settings_parser.add_on_change(
+            'wrap_as_you_type_disabled', self._update_section_matches)
 
     def _update_section_matches(self):
         """Update the value of _section_matches."""
-        if not self._sections or self._is_disabled:
+        if (not self._settings_parser.sections or
+                self._settings_parser.is_disabled):
             return
 
         view = self._view
         selection = view.sel()
         if len(selection) != 1 or not selection[0].empty():
-            self._section_matches = [True] * len(self._sections)
+            self._section_matches = (
+                [True] * len(self._settings_parser.sections))
             return
         point = selection[0].begin()
 
@@ -186,231 +107,10 @@ class WrapFixer(sublime_plugin.TextCommand):
         next_char_scope = view.scope_name(point)
 
         self._section_matches = []
-        for section in self._sections:
+        for section in self._settings_parser.sections:
             self._section_matches.append(
                 self._matches_selector(
                     section, prev_char_scope, next_char_scope))
-
-    def _update_sections(self):
-        """Update _sections.
-
-        Update _sections to reflect the current value of the
-        "wrap_as_you_type_sections" setting.  Raise a UserFacingError if
-        the setting is invalid.
-        """
-        section_setting = self._view.settings().get(
-            'wrap_as_you_type_sections')
-        self._sections = []
-        if section_setting is None:
-            return
-
-        if not isinstance(section_setting, list):
-            raise UserFacingError(
-                '"wrap_as_you_type_sections" must be an array')
-        sections = []
-        for section in section_setting:
-            if not isinstance(section, dict):
-                raise UserFacingError(
-                    'The elements of "wrap_as_you_type_sections" must be '
-                    'objects')
-
-            wrap_width = section.get('wrap_width')
-            if ('wrap_width' in section and
-                    (not Util.is_int(wrap_width) or wrap_width <= 0)):
-                raise UserFacingError(
-                    '"wrap_width" must be a positive integer')
-
-            # Line start
-            if 'line_start' in section and 'allowed_line_starts' in section:
-                raise UserFacingError(
-                    'A section may not have both "line_start" and '
-                    '"allowed_line_starts" entries')
-            if 'line_start' in section:
-                line_start = section['line_start']
-                if not Util.is_string(line_start):
-                    raise UserFacingError('"line_start" must be a string')
-                allowed_line_starts = [line_start]
-            elif 'allowed_line_starts' in section:
-                allowed_line_starts = section['allowed_line_starts']
-                if not isinstance(allowed_line_starts, list):
-                    raise UserFacingError(
-                        '"allowed_line_starts" must be an array')
-                if not allowed_line_starts:
-                    raise UserFacingError(
-                        '"allowed_line_starts" must not be empty')
-                for line_start in allowed_line_starts:
-                    if not Util.is_string(line_start):
-                        raise UserFacingError(
-                            'The elements of "allowed_line_starts" must be '
-                            'strings')
-            else:
-                allowed_line_starts = ['']
-
-            if 'selector' not in section:
-                raise UserFacingError('Missing "selector" entry')
-            selector = section['selector']
-            if not Util.is_string(selector):
-                raise UserFacingError('"selector" must be a string')
-
-            combining_selector = section.get('combining_selector', selector)
-            if ('combining_selector' in section and
-                    not Util.is_string(combining_selector)):
-                raise UserFacingError('"combining_selector" must be a string')
-
-            sections.append({
-                'allowed_line_starts': allowed_line_starts,
-                'combining_selector': combining_selector,
-                'selector': selector,
-                'wrap_width': wrap_width,
-            })
-        self._sections = sections
-        self._update_section_matches()
-
-    def _update_word_regex(self):
-        """Update _word_regex.
-
-        Update _word_regex to reflect the current value of the
-        "wrap_as_you_type_word_regex" setting.  Raise a UserFacingError
-        if the setting is invalid.
-        """
-        word_regex_setting = self._view.settings().get(
-            'wrap_as_you_type_word_regex')
-        self._word_regex = WrapFixer._DEFAULT_WORD_REGEX
-        if word_regex_setting is not None:
-            self._word_regex = self._validate_and_compile_regex(
-                word_regex_setting)
-
-    def _update_space_between_words(self):
-        """Update _space_between_words.
-
-        Update _space_between_words to reflect the current value of the
-        "wrap_as_you_type_space_between_words" setting.  Raise a
-        UserFacingError if the setting is invalid.
-        """
-        space_between_words_setting = self._view.settings().get(
-            'wrap_as_you_type_space_between_words')
-        self._space_between_words = []
-        if space_between_words_setting is None:
-            return
-
-        if not isinstance(space_between_words_setting, list):
-            raise UserFacingError(
-                '"wrap_as_you_type_space_between_words" must be an array')
-        space_between_words = []
-        for item in space_between_words_setting:
-            if not isinstance(item, dict):
-                raise UserFacingError(
-                    'The elements of "wrap_as_you_type_space_between_words" '
-                    'must be objects')
-
-            if 'first_word_regex' not in item:
-                first_word_regex = None
-            else:
-                first_word_regex = self._validate_and_compile_regex(
-                    item['first_word_regex'])
-            if 'second_word_regex' not in item:
-                second_word_regex = None
-            else:
-                second_word_regex = self._validate_and_compile_regex(
-                    item['second_word_regex'])
-
-            if 'space' not in item:
-                raise UserFacingError('Missing "space" entry')
-            space = item['space']
-            if not Util.is_string(space):
-                raise UserFacingError('"space" entry must be a string')
-            if not self._is_all_whitespace(space):
-                raise UserFacingError(
-                    '"space" entry must consist exclusively of whitespace')
-
-            space_between_words.append({
-                'first_word_regex': first_word_regex,
-                'second_word_regex': second_word_regex,
-                'space': space,
-            })
-        self._space_between_words = space_between_words
-
-    def _update_paragraphs(self):
-        """Update _paragraphs.
-
-        Update _paragraphs to reflect the current value of the
-        "wrap_as_you_type_paragraphs" setting.  Raise a UserFacingError
-        if the setting is invalid.
-        """
-        paragraphs_setting = self._view.settings().get(
-            'wrap_as_you_type_paragraphs')
-        self._paragraphs = []
-        if paragraphs_setting is None:
-            return
-
-        if not isinstance(paragraphs_setting, list):
-            raise UserFacingError(
-                '"wrap_as_you_type_paragraphs" must be an array')
-        paragraphs = []
-        for paragraph in paragraphs_setting:
-            if not isinstance(paragraph, dict):
-                raise UserFacingError(
-                    'The elements of "wrap_as_you_type_paragraphs" must be '
-                    'objects')
-
-            if 'first_line_regex' not in paragraph:
-                raise UserFacingError('Missing "first_line_regex" entry')
-            first_line_regex = self._validate_and_compile_regex(
-                paragraph['first_line_regex'])
-
-            indent = paragraph.get('indent', '')
-            if 'indent' in paragraph:
-                if not Util.is_string(indent):
-                    raise UserFacingError('"indent" entry must be a string')
-                if not self._is_all_whitespace(indent):
-                    raise UserFacingError(
-                        '"indent" entry must consist exclusively of '
-                        'whitespace')
-
-            indent_group = paragraph.get('indent_group')
-            if 'indent_group' in paragraph:
-                if Util.is_int(indent_group):
-                    if not (0 <= indent_group <= first_line_regex.groups):
-                        raise UserFacingError(
-                            'The "first_line_regex" entry does not have a '
-                            'group {0:d}'.format(indent_group))
-                elif Util.is_string(indent_group):
-                    if indent_group not in first_line_regex.groupindex:
-                        raise UserFacingError(
-                            u'The "first_line_regex" entry does not have a '
-                            'group named {0:s}'.format(indent_group))
-                else:
-                    raise UserFacingError(
-                        '"indent_group" entry must be a string or an integer')
-
-            single_line = paragraph.get('single_line', False)
-            if not isinstance(single_line, bool):
-                raise UserFacingError('"single_line" entry must be a boolean')
-            if (single_line and
-                    ('indent' in paragraph or indent_group is not None)):
-                raise UserFacingError(
-                    'If "single_line" is true, then the "indent" and '
-                    '"indent_group" entries may not be present')
-
-            paragraphs.append({
-                'first_line_regex': first_line_regex,
-                'indent': indent,
-                'indent_group': indent_group,
-                'single_line': single_line,
-            })
-        self._paragraphs = paragraphs
-
-    def _update_is_disabled(self):
-        """Update _is_disabled.
-
-        Update _is_disabled to reflect the current value of the
-        "wrap_as_you_type_disabled" setting.
-        """
-        is_disabled = bool(
-            self._view.settings().get('wrap_as_you_type_disabled'))
-        if not is_disabled and self._is_disabled:
-            self._update_section_matches()
-        self._is_disabled = is_disabled
 
     def _add_width(self, width, char, tab_size):
         """Return the resulting width after adding the specified character.
@@ -479,7 +179,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         appropriate fallback.
 
         dict<str, object> section - The section, formatted like the
-            elements of _sections.
+            elements of _settings_parser.sections.
         return int - The wrap width.
         """
         if section['wrap_width'] is not None:
@@ -554,11 +254,6 @@ class WrapFixer(sublime_plugin.TextCommand):
         match = WrapFixer._TRAILING_WHITESPACE_REGEX.search(str_)
         return region.end() - match.end() + match.start()
 
-    def _is_all_whitespace(self, str_):
-        """Return whether the specified string consists only of whitespace."""
-        match = WrapFixer._WHITESPACE_REGEX.match(str_)
-        return match.span() == (0, len(str_))
-
     def _section_indent(self, line, line_start):
         """Return the whitespace at the beginning of "line" before line_start.
 
@@ -575,7 +270,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         return str - The whitespace before line_start.
         """
         line_indent = self._leading_whitespace(line)
-        if self._is_all_whitespace(line_start):
+        if Util.is_all_whitespace(line_start):
             index = line_indent.find(line_start)
             if index >= 0:
                 return line_indent[:index]
@@ -676,8 +371,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Return the locations of the words in str_.
 
         Return the locations of the words in str_, based on the value of
-        _word_regex (and after applying any corrections suggested by
-        _fix_word_spans).
+        _settings_parser.word_regex (and after applying any corrections
+        suggested by _fix_word_spans).
 
         str str_ - The string to search.
         return list<tuple<int, int>> - The positions of the words.  Each
@@ -695,16 +390,17 @@ class WrapFixer(sublime_plugin.TextCommand):
 
         # Compute the words
         spans = []
-        for match in self._word_regex.finditer(trimmed_str):
+        for match in self._settings_parser.word_regex.finditer(trimmed_str):
             spans.append((
                 trimmed_str_start_index + match.start(),
                 trimmed_str_start_index + match.end()))
 
         # Fix any problems with the words
-        if self._word_regex != WrapFixer._DEFAULT_WORD_REGEX:
+        if (self._settings_parser.word_regex !=
+                SettingsParser.DEFAULT_WORD_REGEX):
             return self._fix_word_spans(spans, str_)
         else:
-            # Optimization: _DEFAULT_WORD_REGEX is trustworthy, so don't bother
+            # Optimization: DEFAULT_WORD_REGEX is trustworthy, so don't bother
             # calling _fix_word_spans
             return spans
 
@@ -712,15 +408,15 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Return the space to use between the specified words.
 
         Return the space to use between the specified words, as
-        suggested by _space_between_words.  The space is a string
-        consisting of whitespace characters.  It may be the empty string
-        ''.
+        suggested by _settings_parser.space_between_words.  The space is
+        a string consisting of whitespace characters.  It may be the
+        empty string ''.
 
         str first_word - The word before the space.
         str second_word - The word after the space.
         return str - The space.
         """
-        for item in self._space_between_words:
+        for item in self._settings_parser.space_between_words:
             if ((item['first_word_regex'] is None or
                     item['first_word_regex'].search(
                         first_word) is not None) and
@@ -743,7 +439,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         matches the section (as in _point_matches_selector).
 
         dict<str, object> section - The section, formatted like the
-            elements of _sections.
+            elements of _settings_parser.sections.
         int first_point - The starting point.
         int second_point - The ending point.
         return int - The furthest point we can combine.
@@ -794,7 +490,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         matches the section (as in _point_matches_selector).
 
         dict<str, object> section - The section, formatted like the
-            elements of _sections.
+            elements of _settings_parser.sections.
         int first_point - The starting point.
         int second_point - The ending point.
         return bool - Whether we can combine second_point with
@@ -840,7 +536,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         comments for _point_matches_selector for more information.
 
         dict<str, object> section - The section, formatted like the
-            elements of _sections.
+            elements of _settings_parser.sections.
         str prev_char_scope - The result of calling _prev_char_scope on
             the position.
         str next_char_scope - The scope of the succeeding character, as
@@ -868,7 +564,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         though the succeeding character is not.
 
         dict<str, object> section - The section, formatted like the
-            elements of _sections.
+            elements of _settings_parser.sections.
         int point - The position.
         Region line_region - The value of _view.line(point).
         return bool - Whether the position matches.
@@ -878,15 +574,15 @@ class WrapFixer(sublime_plugin.TextCommand):
             self._view.scope_name(point))
 
     def _is_first_line_of_paragraph(self, line):
-        """Return whether the specified line matches an element of _paragraphs.
+        """Return whether the specified line matches a paragraph's first line.
 
         Return whether the specified line matches a "first_line_regex"
-        entry in _paragraphs.
+        entry in _settings_parser.paragraphs.
 
         str line - The line.
         return bool - Whether the line matches.
         """
-        for paragraph in self._paragraphs:
+        for paragraph in self._settings_parser.paragraphs:
             if paragraph['first_line_regex'].search(line) is not None:
                 return True
         return False
@@ -905,7 +601,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         return str - The indentation.  This consists exclusively of
             whitespace characters.
         """
-        for paragraph in self._paragraphs:
+        for paragraph in self._settings_parser.paragraphs:
             match = paragraph['first_line_regex'].search(line)
             if match is not None:
                 if paragraph['single_line']:
@@ -942,7 +638,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         are considering as if they were consecutive lines.
 
         dict<str, object> section - The current section, formatted like
-            the elements of _sections.
+            the elements of _settings_parser.sections.
         int point - The current position.  This must be in
             first_line_region or second_line_region.
         str first_line - The text of the first line.
@@ -1028,7 +724,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         indentation or line start).
 
         dict<str, object> section - The section we are attempting to
-            use, formatted like the elements of _sections.
+            use, formatted like the elements of
+            _settings_parser.sections.
         int point - The position of the selection cursor.
         str line_start - The line start we are attempting to use.
         str line - The value of _view.substr(line_region).
@@ -1047,11 +744,11 @@ class WrapFixer(sublime_plugin.TextCommand):
             prev_line_region is None.
         return bool - Whether we should erase the preceding line break.
         """
-        if (prev_line_region is None or self._is_all_whitespace(line) or
+        if (prev_line_region is None or Util.is_all_whitespace(line) or
                 # If line_start consists exclusively of whitespace, then the
                 # setting is too generic to be confident that the user
                 # backspaced past the beginning of a line
-                self._is_all_whitespace(line_start)):
+                Util.is_all_whitespace(line_start)):
             return False
 
         # Check whether the user appears to have backspaced part of the
@@ -1063,7 +760,7 @@ class WrapFixer(sublime_plugin.TextCommand):
             return False
 
         # Check whether prev_line has at least one word
-        if self._is_all_whitespace(prev_line[len(indent) + len(line_start):]):
+        if Util.is_all_whitespace(prev_line[len(indent) + len(line_start):]):
             return False
 
         # Check whether the first thing after "point" is line_start, in which
@@ -1139,7 +836,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         have any indentation or line start).
 
         dict<str, object> section - The current section, formatted like
-            the elements of _sections.
+            the elements of _settings_parser.sections.
         int point - The position.
         str line_start - The line start.
         return tuple<Region, str> - The edit, if any.
@@ -1188,7 +885,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         not perform a split operation.
 
         dict<str, object> section - The current section, formatted like
-            the elements of _sections.
+            the elements of _settings_parser.sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1283,7 +980,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         perform a join operation.
 
         dict<str, object> section - The current section, formatted like
-            the elements of _sections.
+            the elements of _settings_parser.sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1322,7 +1019,7 @@ class WrapFixer(sublime_plugin.TextCommand):
             next_i_line_start_i_len + first_word_span[1]]
 
         # Compute the post-join spacing between last_word and first_word
-        if not self._is_all_whitespace(line[-1]):
+        if not Util.is_all_whitespace(line[-1]):
             keep_space = False
             space = self._space_between(last_word, first_word)
         else:
@@ -1367,7 +1064,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         operation.
 
         dict<str, object> section - The current section, formatted like
-            the elements of _sections.
+            the elements of _settings_parser.sections.
         int point - The current position.
         str line_start - The line start.
         return tuple<tuple<Region, str>, int> - A pair consisting of the
@@ -1384,12 +1081,13 @@ class WrapFixer(sublime_plugin.TextCommand):
         """Compute the section to use for word wrap fixup, if any.
 
         Return a triple whose first element is the section to use for
-        word wrap fixup, formatted like the elements of _sections, if
-        any.  The second element is the line start, and the third
-        element is the result of _should_erase_preceding_line_break.
-        (If the third element is True, then the section contains a
-        position in the previous line instead of "point".)  Return
-        (None, None, False) if there is no matching section.
+        word wrap fixup, formatted like the elements of
+        _settings_parser.sections, if any.  The second element is the
+        line start, and the third element is the result of
+        _should_erase_preceding_line_break.  (If the third element is
+        True, then the section contains a position in the previous line
+        instead of "point".)  Return (None, None, False) if there is no
+        matching section.
 
         int point - The position.
         return tuple<dict<str, object>, str, bool> - The result.
@@ -1418,7 +1116,8 @@ class WrapFixer(sublime_plugin.TextCommand):
             prev_line_next_char_scope = view.scope_name(prev_line_region.end())
 
         # Find the first matching section
-        for section, was_match in zip(self._sections, self._section_matches):
+        sections = self._settings_parser.sections
+        for section, was_match in zip(sections, self._section_matches):
             for line_start in section['allowed_line_starts']:
                 # We check _should_erase_preceding_line_break separately,
                 # because it checks for the line start on the previous line
@@ -1452,7 +1151,7 @@ class WrapFixer(sublime_plugin.TextCommand):
             and indicates that any text that is in the Region should be
             replaced with the given string.
         """
-        if not self._sections:
+        if not self._settings_parser.sections:
             return
 
         # Only perform word wrap fixup if there is a single, empty selection
@@ -1524,9 +1223,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         """
         wrap_fixer = WrapFixer._instances.pop(view.id(), None)
         if wrap_fixer is not None:
-            settings = view.settings()
-            for setting in WrapFixer._UPDATE_SETTINGS_FUNCS.keys():
-                settings.clear_on_change(setting)
+            wrap_fixer._settings_parser.clear_on_change()
 
     def has_edit(self):
         """Return whether there is any word wrapping fixup to perform."""

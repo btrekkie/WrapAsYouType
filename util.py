@@ -1,10 +1,14 @@
 import numbers
+import re
 
 import sublime
 
 
 class Util(object):
     """Provides static utility methods."""
+
+    # Equivalent value is contractual
+    _WHITESPACE_REGEX = re.compile(r'\s*')
 
     @staticmethod
     def is_string(obj):
@@ -24,6 +28,12 @@ class Util(object):
         not a boolean.
         """
         return isinstance(obj, numbers.Integral) and not isinstance(obj, bool)
+
+    @staticmethod
+    def is_all_whitespace(str_):
+        """Return whether the specified string consists only of whitespace."""
+        match = Util._WHITESPACE_REGEX.match(str_)
+        return match.span() == (0, len(str_))
 
     @staticmethod
     def status_message(window, message):

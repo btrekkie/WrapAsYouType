@@ -52,10 +52,10 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
             # Move the cursor to an arbitrary position, so that the selection
             # is empty
             view.run_command('move', {'by': 'characters', 'forward': True})
-        prev_point = selection[0].begin()
-        for i in range(abs(point - prev_point)):
+        while view.sel()[0].begin() != point:
             view.run_command(
-                'move', {'by': 'characters', 'forward': point > prev_point})
+                'move',
+                {'by': 'characters', 'forward': point > view.sel()[0].begin()})
 
     def _set_selection_region(self, region):
         """Set the selection cursor to the specified region.
@@ -67,12 +67,12 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         # Do not alter self._view.sel() directly, because that prevents
         # EventListener.on_selection_modified from being called
         self._set_selection_point(region.a)
-        for i in range(region.size()):
+        while self._view.sel()[0].b != region.b:
             self._view.run_command(
                 'move', {
                     'by': 'characters',
                     'extend': True,
-                    'forward': region.b > region.a,
+                    'forward': region.b > self._view.sel()[0].b,
                 })
 
     def _insert(self, point, str_):
