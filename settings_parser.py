@@ -336,7 +336,7 @@ class SettingsParser(object):
         str setting - The name of the setting, e.g.
             'wrap_as_you_type_sections'.  This must be a valid
             wrap_as_you_type_* setting.
-        () -> () func - The function to call when the setting is
+        () -> void func - The function to call when the setting is
             changed.
         """
         self._listeners.setdefault(setting, []).append(func)

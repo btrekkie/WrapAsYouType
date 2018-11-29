@@ -51,6 +51,9 @@ class WrapFixer(sublime_plugin.TextCommand):
     #     has_edit() or perform_edits().
     # tuple<Region, str> _first_edit - The first edit that _edits_gen yielded.
     #     This is None if it did not yield any edits or if _edits_gen is None.
+    # int _prev_selection_point - The most recent value of _selection_point().
+    #     We do not update _prev_selection_point if the
+    #     "wrap_as_you_type_disabled" setting is true.
     # list<bool> _section_matches - Whether the selection cursor matches each
     #     of the sections, as in _point_matches_selector.  This is parallel to
     #     _settings_parser.sections.  All of the elements of _section_matches
@@ -80,13 +83,27 @@ class WrapFixer(sublime_plugin.TextCommand):
         self._view = view
         self._edits_gen = None
         self._first_edit = None
+        self._prev_selection_point = None
         self._section_matches = []
         self._settings_parser = SettingsParser(view)
 
         self._settings_parser.add_on_change(
             'wrap_as_you_type_sections', self._update_section_matches)
         self._settings_parser.add_on_change(
-            'wrap_as_you_type_disabled', self._update_section_matches)
+            'wrap_as_you_type_disabled', self._on_change_disabled)
+
+    def _selection_point(self):
+        """Return the point of the selection cursor.
+
+        Return None if there is not a single, empty selection cursor.
+
+        return int - The point.
+        """
+        selection = self._view.sel()
+        if len(selection) == 1 and selection[0].empty():
+            return selection[0].begin()
+        else:
+            return None
 
     def _update_section_matches(self):
         """Update the value of _section_matches."""
@@ -95,12 +112,11 @@ class WrapFixer(sublime_plugin.TextCommand):
             return
 
         view = self._view
-        selection = view.sel()
-        if len(selection) != 1 or not selection[0].empty():
+        point = self._selection_point()
+        if point is None:
             self._section_matches = (
                 [True] * len(self._settings_parser.sections))
             return
-        point = selection[0].begin()
 
         line_region = view.line(point)
         prev_char_scope = self._prev_char_scope(point, line_region)
@@ -680,6 +696,16 @@ class WrapFixer(sublime_plugin.TextCommand):
                 paragraph_indent):
             return None
 
+        # If the line break between the two paragraphs was inserted by the user
+        # pressing the enter key, then we preserve it, by treating the second
+        # line as the start of a new paragraph
+        regions = self._view.get_regions(
+            'wrap_as_you_type_explicit_line_break')
+        for region in regions:
+            if (region.begin() == first_line_region.end() and
+                    region.end() == second_line_region.begin()):
+                return None
+
         # Restrict second_line_text by _combine_extent
         combine_extent = self._combine_extent(
             section, point,
@@ -882,7 +908,8 @@ class WrapFixer(sublime_plugin.TextCommand):
         point - the later of the position to which "point" is moved
         after the split, and the position after the i_line_start_i of
         the added line.  This method returns (None, None) if we should
-        not perform a split operation.
+        not perform a split operation.  It assumes that there is a
+        single, empty selection cursor.
 
         dict<str, object> section - The current section, formatted like
             the elements of _settings_parser.sections.
@@ -939,7 +966,7 @@ class WrapFixer(sublime_plugin.TextCommand):
             return (None, None)
 
         # Compute the edit
-        selection_point = view.sel()[0].begin()
+        selection_point = self._selection_point()
         if (last_word_region.end() < selection_point <=
                 first_word_region.begin()):
             # Keep any spaces (or tabs) that are just before the cursor at the
@@ -1158,16 +1185,10 @@ class WrapFixer(sublime_plugin.TextCommand):
         # cursor.  The main reason for this is to simplify the implementation.
         # A secondary reason is to reduce the performance overhead of
         # WrapAsYouType.
-        view = self._view
-        selection = view.sel()
-        if len(selection) != 1:
-            return
-        selected_region = selection[0]
-        if not selected_region.empty():
+        point = self._selection_point()
+        if point is None:
             return
 
-        # Find the section that contains the selection cursor
-        point = selected_region.begin()
         section, line_start, should_erase_preceding_line_break = (
             self._find_section(point))
         if section is None:
@@ -1241,15 +1262,10 @@ class WrapFixer(sublime_plugin.TextCommand):
         sublime.Edit edit - The Edit object to use for the edit.
         tuple<Region, str> e - The edit to perform.
         """
-        # Compute selection_point
-        view = self._view
-        selection = view.sel()
-        if len(selection) == 1 and selection[0].empty():
-            selection_point = selection[0].begin()
-        else:
-            selection_point = None
+        selection_point = self._selection_point()
 
         # Perform the edit
+        view = self._view
         replace_region, replacement_str = e
         if not replacement_str:
             view.erase(edit, replace_region)
@@ -1262,6 +1278,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         if replacement_str and selection_point == replace_region.begin():
             # We want the selection cursor to be right before the replacement
             # string, not right after
+            selection = view.sel()
             selection.clear()
             selection.add(Region(selection_point, selection_point))
 
@@ -1276,10 +1293,44 @@ class WrapFixer(sublime_plugin.TextCommand):
             for e in edits_gen:
                 self._perform_edit(edit, e)
 
+    def _on_change_disabled(self):
+        """Respond to a change in the "wrap_as_you_type_disabled" setting."""
+        if not self._settings_parser.is_disabled:
+            self._update_section_matches()
+            self._view.erase_regions('wrap_as_you_type_explicit_line_break')
+            self._prev_selection_point = self._selection_point()
+
     def on_modified(self):
-        """Respond to a modification to the WrapFixer's View's content."""
+        """Respond to a modification to the WrapFixer's View's content.
+
+        This method is called before performing any resulting word wrap
+        fixup.  It is also called for the modifications that comprise
+        the actual word wrap fixup.
+        """
         self._edits_gen = None
         self._first_edit = None
+
+        # If the user pressed the enter key (or performed an analogous
+        # operation), mark the last line break as an explicit line break.  We
+        # preserve this line break, by treating the two lines adjacent to it as
+        # belonging to separate paragraphs.  The idea is that by pressing the
+        # enter key, the user has expressed a desire that the document contain
+        # the resulting line break.  For performance reasons, there is at most
+        # one explicit line break at any given moment.
+        if not self._settings_parser.is_disabled:
+            self._prev_selection_point = self._selection_point()
+            command_name, command_args, _ = self._view.command_history(0)
+            if (self._prev_selection_point is not None and
+                    command_name == 'insert' and
+                    '\n' in command_args['characters'] and
+                    not self._view.command_history(1)[0]):
+                line_region = self._view.line(self._prev_selection_point)
+                if line_region.begin() > 0:
+                    line_break_region = Region(
+                        line_region.begin() - 1, line_region.begin())
+                    self._view.add_regions(
+                        'wrap_as_you_type_explicit_line_break',
+                        [line_break_region], '')
 
     def on_post_modification(self):
         """Respond to a modification, after performing any word wrap fixup.
@@ -1296,4 +1347,13 @@ class WrapFixer(sublime_plugin.TextCommand):
     def on_selection_modified(self):
         """Respond to a change in the position(s) of the selection cursor(s).
         """
+        if self._settings_parser.is_disabled:
+            return
         self._update_section_matches()
+
+        selection_point = self._selection_point()
+        if (selection_point != self._prev_selection_point or
+                selection_point is None):
+            # The user (probably) manually moved the selection cursor
+            self._view.erase_regions('wrap_as_you_type_explicit_line_break')
+        self._prev_selection_point = selection_point
