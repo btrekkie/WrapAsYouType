@@ -1204,9 +1204,13 @@ class WrapFixer(sublime_plugin.TextCommand):
             if edit is not None:
                 yield edit
 
+        # Perform backwards joins
+        joined = True
+        while joined:
             edit, join_point = self._try_backwards_join_edit(
                 section, point, line_start)
-            if edit is not None:
+            joined = edit is not None
+            if joined:
                 yield edit
                 point = join_point
 
