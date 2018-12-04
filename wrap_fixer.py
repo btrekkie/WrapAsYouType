@@ -1304,6 +1304,39 @@ class WrapFixer(sublime_plugin.TextCommand):
             self._view.erase_regions('wrap_as_you_type_explicit_line_break')
             self._prev_selection_point = self._selection_point()
 
+    def _has_explicit_line_break(self, command_name, command_args):
+        """Return whether the specified command has an explicit line break.
+
+        Return whether in our judgment, all or part of the specified
+        command is the insertion of an explicit line break.  An explicit
+        line break is one that was "manually" added by the user.  The
+        paradigmatic example is pressing the enter key.  Note that the
+        command may be an entry in the undo history, rather than an
+        individual command that was directly executed.
+
+        str command_name - The name of the command, as in the first
+            argument to View.run_command.
+        dict command_args - The arguments to the command, as in the
+            second argument to View.run_command.
+        return bool - Whether there is an explicit line break.
+        """
+        if command_name == 'insert':
+            return '\n' in command_args['characters']
+        elif command_name == 'insert_snippet':
+            # This approach is adequate, but imperfect.  It does not work when
+            # inserting a snippet from a file.  It also does not detect
+            # newlines that are in variables.  This does not appear to be
+            # doable, considering that (a) sublime.expand_variables was not
+            # introduced until Sublime 3; (b) there does not appear to be a
+            # straightforward way to get the values of all of the variables,
+            # such as $TM_CURRENT_LINE; and (c) the values of variables such as
+            # $TM_CURRENT_LINE may have changed since the command was executed.
+            return (
+                'contents' in command_args and
+                '\n' in command_args['contents'])
+        else:
+            return False
+
     def on_modified(self):
         """Respond to a modification to the WrapFixer's View's content.
 
@@ -1325,8 +1358,8 @@ class WrapFixer(sublime_plugin.TextCommand):
             self._prev_selection_point = self._selection_point()
             command_name, command_args, _ = self._view.command_history(0)
             if (self._prev_selection_point is not None and
-                    command_name == 'insert' and
-                    '\n' in command_args['characters'] and
+                    self._has_explicit_line_break(
+                        command_name, command_args) and
                     not self._view.command_history(1)[0]):
                 line_region = self._view.line(self._prev_selection_point)
                 if line_region.begin() > 0:
