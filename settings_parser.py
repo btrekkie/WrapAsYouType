@@ -64,10 +64,10 @@ class SettingsParser(object):
         "wrap_as_you_type_paragraphs" setting, but with the
         "first_line_regex" entries replaced with re.Patterns instead of
         strings (the result of calling re.compile on the entries), with
-        default values filled in for the "indent" and "single_line"
-        entries, and with missing "indent_group" entries replaced with
-        None.  This is [] if the value of "wrap_as_you_type_paragraphs"
-        is invalid.
+        default values filled in for the "single_line" entries, and with
+        missing "indent", "indent_levels", and "indent_group" entries
+        replaced with None.  This is [] if the value of
+        "wrap_as_you_type_paragraphs" is invalid.
     list<dict<str, object>> sections - Equivalent to the
         "wrap_as_you_type_sections" setting, but with any "line_start"
         entries replaced with single-element "allowed_line_starts"
@@ -277,7 +277,7 @@ class SettingsParser(object):
             first_line_regex = self._validate_and_compile_regex(
                 paragraph['first_line_regex'])
 
-            indent = paragraph.get('indent', '')
+            indent = paragraph.get('indent', None)
             if 'indent' in paragraph:
                 if not Util.is_string(indent):
                     raise UserFacingError('"indent" entry must be a string')
@@ -285,6 +285,16 @@ class SettingsParser(object):
                     raise UserFacingError(
                         '"indent" entry must consist exclusively of '
                         'whitespace')
+
+            indent_levels = paragraph.get('indent_levels', None)
+            if 'indent_levels' in paragraph:
+                if not Util.is_int(indent_levels) or indent_levels < 0:
+                    raise UserFacingError(
+                        '"indent_levels" entry must be a nonnegative integer')
+                if indent is not None:
+                    raise UserFacingError(
+                        '"indent" and "indent_levels" entries may not both be '
+                        'present')
 
             indent_group = paragraph.get('indent_group')
             if 'indent_group' in paragraph:
@@ -315,6 +325,7 @@ class SettingsParser(object):
                 'first_line_regex': first_line_regex,
                 'indent': indent,
                 'indent_group': indent_group,
+                'indent_levels': indent_levels,
                 'single_line': single_line,
             })
         self.paragraphs = paragraphs

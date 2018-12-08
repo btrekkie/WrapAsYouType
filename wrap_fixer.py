@@ -637,17 +637,21 @@ class WrapFixer(sublime_plugin.TextCommand):
                     return None
 
                 indent_group = paragraph['indent_group']
-                if indent_group is None:
-                    return paragraph['indent']
-                else:
+                if indent_group is not None:
                     group = match.group(indent_group)
-                    if group is None:
-                        return paragraph['indent']
-                    else:
+                    if group is not None:
                         components = []
                         for char in group:
                             components.append(' ' if char != '\t' else '\t')
                         return ''.join(components)
+
+                if paragraph['indent'] is not None:
+                    return paragraph['indent']
+                elif paragraph['indent_levels'] is not None:
+                    tab_size = self._view.settings().get('tab_size')
+                    return ' ' * (tab_size * paragraph['indent_levels'])
+                else:
+                    return ''
         return ''
 
     def _same_paragraph_line(

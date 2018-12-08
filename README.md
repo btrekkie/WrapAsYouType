@@ -664,17 +664,23 @@ following entries:
   section's line start, and then removing any leading and trailing whitespace.
   Note that if a line has no text, then it is never considered as part of any
   paragraph.
+* `"indent_levels"` (optional): The number of levels to indent lines in the
+  paragraph after the first line, relative to the indentation of the first line.
+  One level is a number of spaces equal to the tab width.  By default, there is
+  no indentation.
 * `"indent"` (optional): The indentation of the lines in the paragraph after the
   first line, relative to the indentation of the first line.  This must consist
-  exclusively of whitespace.  Defaults to `""`.
+  exclusively of whitespace.  It is an error to include both an `"indent"` entry
+  and an `"indent_levels"` entry.
 * `"indent_group"` (optional): The regular expression group to use to determine
   the indentation of the lines in the paragraph after the first line, relative
   to the indentation of the first line.  This can be a group number or a group
   name.  If the `"indent_group"` entry is present and the group exists as part
   of the earliest `"first_line_regex"` match, then the indentation string is the
   same as the group string, but with each character that is not a tab replaced
-  with a space.  If `"indent"` and `"indent_group"` entries are both present,
-  then the `"indent_group"` entry predominates.
+  with a space.  If there is an `"indent_group"` entry and there is also an
+  `"indent"` or `"indent_levels"` entry, then the `"indent_group"` entry
+  predominates.
 * `"single_line"` (optional): Whether the paragraph consists of only one line:
   the line matching `"first_line_regex"`.  Defaults to false.  WrapAsYouType
   does not wrap single-line paragraphs that extend beyond the wrap width.  If
