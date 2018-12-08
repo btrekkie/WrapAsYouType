@@ -58,6 +58,8 @@ class SettingsParser(object):
 
     bool is_disabled - The result of coercing the
         "wrap_as_you_type_disabled" setting to a boolean.
+    bool is_passive - The "wrap_as_you_type_passive" setting.  This is
+        False if the value of "wrap_as_you_type_passive" is invalid.
     list<dict<str, object>> paragraphs - Equivalent to the
         "wrap_as_you_type_paragraphs" setting, but with the
         "first_line_regex" entries replaced with re.Patterns instead of
@@ -316,6 +318,16 @@ class SettingsParser(object):
                 'single_line': single_line,
             })
         self.paragraphs = paragraphs
+
+    @_update_setting_method('wrap_as_you_type_passive')
+    def _update_is_passive(self):
+        """Update the value of self.is_passive."""
+        passive_setting = self._view.settings().get('wrap_as_you_type_passive')
+        if passive_setting in (None, False, True):
+            self.is_passive = bool(passive_setting)
+        else:
+            self.is_passive = False
+            raise UserFacingError('The value must be a boolean')
 
     @_update_setting_method('wrap_as_you_type_disabled')
     def _update_is_disabled(self):

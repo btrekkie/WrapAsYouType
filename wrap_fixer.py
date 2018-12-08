@@ -51,6 +51,12 @@ class WrapFixer(sublime_plugin.TextCommand):
     #     has_edit() or perform_edits().
     # tuple<Region, str> _first_edit - The first edit that _edits_gen yielded.
     #     This is None if it did not yield any edits or if _edits_gen is None.
+    # bool _passively_split - Whether the line after the selection cursor was
+    #     added as a result of our splitting a line (as in _try_split_edit),
+    #     provided that the split took place since the last time the user set
+    #     "wrap_as_you_type_passive" to true or "wrap_as_you_type_disabled" to
+    #     false, and since the last time he manually moved the selection
+    #     cursor.
     # int _prev_selection_point - The most recent value of _selection_point().
     #     We do not update _prev_selection_point if the
     #     "wrap_as_you_type_disabled" setting is true.
@@ -84,11 +90,14 @@ class WrapFixer(sublime_plugin.TextCommand):
         self._edits_gen = None
         self._first_edit = None
         self._prev_selection_point = None
+        self._passively_split = False
         self._section_matches = []
         self._settings_parser = SettingsParser(view)
 
         self._settings_parser.add_on_change(
             'wrap_as_you_type_sections', self._update_section_matches)
+        self._settings_parser.add_on_change(
+            'wrap_as_you_type_passive', self._on_change_passive)
         self._settings_parser.add_on_change(
             'wrap_as_you_type_disabled', self._on_change_disabled)
 
@@ -1205,30 +1214,77 @@ class WrapFixer(sublime_plugin.TextCommand):
                 yield edit
 
         # Perform backwards joins
-        joined = True
-        while joined:
-            edit, join_point = self._try_backwards_join_edit(
-                section, point, line_start)
-            joined = edit is not None
-            if joined:
-                yield edit
-                point = join_point
+        if not self._settings_parser.is_passive:
+            joined = True
+            while joined:
+                edit, join_point = self._try_backwards_join_edit(
+                    section, point, line_start)
+                joined = edit is not None
+                if joined:
+                    yield edit
+                    point = join_point
 
-        # Keep splitting and joining until we reach a steady state
-        while True:
-            edit, split_point = self._try_split_edit(
-                section, point, line_start)
-            if edit is not None:
-                yield edit
-                point = split_point
-            else:
+        if not self._settings_parser.is_passive:
+            # Keep splitting and joining until we reach a steady state
+            while True:
+                edit, split_point = self._try_split_edit(
+                    section, point, line_start)
+                if edit is not None:
+                    yield edit
+                    point = split_point
+                else:
+                    edit, join_point = self._try_join_edit(
+                        section, point, line_start)
+                    if edit is not None:
+                        yield edit
+                        point = join_point
+                    else:
+                        break
+        else:
+            # Split as much as possible
+            view = self._view
+            row = view.rowcol(self._selection_point())[0]
+            split_count = 0
+            if self._passively_split:
+                split_count += 1
+            split = True
+            while split:
+                edit, split_point = self._try_split_edit(
+                    section, point, line_start)
+                split = edit is not None
+                if split:
+                    yield edit
+                    point = split_point
+                    new_row = view.rowcol(self._selection_point())[0]
+                    if new_row == row:
+                        split_count += 1
+                    else:
+                        row = new_row
+
+            if self._passively_split:
+                # Attempt to rejoin the previously split line
                 edit, join_point = self._try_join_edit(
                     section, point, line_start)
                 if edit is not None:
                     yield edit
-                    point = join_point
-                else:
-                    break
+                    split_count -= 1
+
+                    # Split as much as possible
+                    split = True
+                    while split:
+                        edit, split_point = self._try_split_edit(
+                            section, point, line_start)
+                        split = edit is not None
+                        if split:
+                            yield edit
+                            point = split_point
+                            new_row = view.rowcol(self._selection_point())[0]
+                            if new_row == row:
+                                split_count += 1
+                            else:
+                                row = new_row
+
+            self._passively_split = split_count > 0
 
     @staticmethod
     def instance(view):
@@ -1297,9 +1353,18 @@ class WrapFixer(sublime_plugin.TextCommand):
             for e in edits_gen:
                 self._perform_edit(edit, e)
 
+    def _on_change_passive(self):
+        """Respond to a change in the "wrap_as_you_type_passive" setting."""
+        if self._settings_parser.is_passive:
+            self._view.erase_regions('wrap_as_you_type_explicit_line_break')
+        else:
+            self._passively_split = False
+
     def _on_change_disabled(self):
         """Respond to a change in the "wrap_as_you_type_disabled" setting."""
-        if not self._settings_parser.is_disabled:
+        if self._settings_parser.is_disabled:
+            self._passively_split = False
+        else:
             self._update_section_matches()
             self._view.erase_regions('wrap_as_you_type_explicit_line_break')
             self._prev_selection_point = self._selection_point()
@@ -1392,5 +1457,9 @@ class WrapFixer(sublime_plugin.TextCommand):
         if (selection_point != self._prev_selection_point or
                 selection_point is None):
             # The user (probably) manually moved the selection cursor
-            self._view.erase_regions('wrap_as_you_type_explicit_line_break')
+            if self._settings_parser.is_passive:
+                self._passively_split = False
+            else:
+                self._view.erase_regions(
+                    'wrap_as_you_type_explicit_line_break')
         self._prev_selection_point = selection_point

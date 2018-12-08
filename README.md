@@ -30,6 +30,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   * [`"wrap_as_you_type_word_regex"`](#wrap_as_you_type_word_regex)
   * [`"wrap_as_you_type_space_between_words"`](#wrap_as_you_type_space_between_words)
   * [`"wrap_as_you_type_paragraphs"`](#wrap_as_you_type_paragraphs)
+  * [`"wrap_as_you_type_passive"`](#wrap_as_you_type_passive)
   * [`"wrap_as_you_type_disabled"`](#wrap_as_you_type_disabled)
 * [Comparison with Auto (Hard) Wrap](#comparison-with-auto-hard-wrap)
 
@@ -701,6 +702,19 @@ matches; it doesn't support multiline constructs.  Because of these
 shortcomings, `"wrap_as_you_type_paragraphs"` might be altered or replaced with
 another setting in a future release.
 
+## <a id="wrap_as_you_type_passive"></a>`"wrap_as_you_type_passive"`
+If `"wrap_as_you_type_passive"` is set to true, WrapAsYouType is less aggressive
+with the changes it makes.  In particular, it does not attempt to move words
+from the beginning of the current line to the end of the previous line.
+
+One use case would be when editing structured comments such as docblocks.
+Typically, WrapAsYouType can be instructed to respect the formatting of such
+comments by using the
+[`"wrap_as_you_type_paragraphs"` setting](#wrap_as_you_type_paragraphs).
+However, if a user is unable or unwilling to configure
+`"wrap_as_you_type_paragraphs"` to recognize the formatting that the comments
+are using, he may prefer to set `"wrap_as_you_type_passive"` to true.
+
 ## <a id="wrap_as_you_type_disabled"></a>`"wrap_as_you_type_disabled"`
 `"wrap_as_you_type_disabled"` is a boolean indicating whether the WrapAsYouType
 plugin should cease to operate.  The `"toggle_wrap_as_you_type"` command inverts
@@ -759,6 +773,3 @@ Advantages of Auto (Hard) Wrap over WrapAsYouType:
 
 * WrapAsYouType requires the user to provide special settings for each
   programming language.
-* For some use cases, it may be preferable not to move text from the beginning
-  of the current line to the end of the previous line, but only to perform
-  forward-looking word wrapping.

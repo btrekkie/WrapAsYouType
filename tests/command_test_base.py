@@ -18,6 +18,7 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         settings.set('trim_automatic_white_space', True)
         settings.set('wrap_as_you_type_disabled', False)
         settings.set('wrap_as_you_type_paragraphs', None)
+        settings.set('wrap_as_you_type_passive', None)
         settings.set('wrap_as_you_type_sections', None)
         settings.set('wrap_as_you_type_space_between_words', None)
         settings.set('wrap_as_you_type_word_regex', None)

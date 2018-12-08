@@ -522,6 +522,145 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
                 comment_start_point, comment_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
 
+    def test_passive(self):
+        """Test the "wrap_as_you_type_passive" setting."""
+        view = self._view
+        self._set_up_cpp()
+        settings = view.settings()
+        settings.set('wrap_as_you_type_passive', True)
+        settings.set('rulers', [60])
+
+        self._append(
+            '#include <iostream>\n'
+            '\n'
+            'using namespace std;\n'
+            '\n'
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' */\n'
+            'int fibonacci(int n) {\n'
+            '    // Base case\n'
+            '    if (n == 0) {\n'
+            '        return 0;\n'
+            '    }\n'
+            '\n'
+            '    // Iterative implementation of "fibonacci"\n'
+            '    int cur = 1;\n'
+            '    int prev = 0;\n'
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev;\n'
+            '        prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n'
+            '    return cur;\n'
+            '}\n'
+            '\n'
+            'int main() {\n'
+            '    cout << "The 8th Fibonacci number is " <<\n'
+            '        fibonacci(8) << "\\n";\n'
+            '    return 0;\n'
+            '}\n')
+
+        comment_start_point = view.find(r'/\*\*', 0).begin()
+        point = view.find(r'Fibonacci sequence\.', 0).end()
+        self._insert(point, '  The function assumes that n >= 0.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.  The function assumes that n >= 0.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('The function assumes', 0).begin() - 1
+        self._insert(
+            point,
+            'The Fibonacci sequence begins with 0 as the 0th number and 1 as '
+            'the first number. Every subsequent number is equal to the sum '
+            'of the two previous numbers.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence. The Fibonacci sequence begins with 0\n'
+            ' * as the 0th number and 1 as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers. The function assumes that n >= 0.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find(r'Fibonacci sequence\.', 0).end() - 1
+        self._insert(point, ', defined as follows')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence, defined as follows. The Fibonacci\n'
+            ' * sequence begins with 0\n'
+            ' * as the 0th number and 1 as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers. The function assumes that n >= 0.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        region = view.find(r'as follows', 0)
+        self._backspace(region)
+        self._insert(region.begin(), 'hence')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence, defined hence. The Fibonacci sequence\n'
+            ' * begins with 0\n'
+            ' * as the 0th number and 1 as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers. The function assumes that n >= 0.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('1 as the first', 0).begin()
+        self._delete(point, 1)
+        self._insert(point, 'one')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence, defined hence. The Fibonacci sequence\n'
+            ' * begins with 0\n'
+            ' * as the 0th number and one as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers. The function assumes that n >= 0.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find(r'assumes that n >= 0\.', 0).end()
+        self._insert(point, ' It requires n to be an integer.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence, defined hence. The Fibonacci sequence\n'
+            ' * begins with 0\n'
+            ' * as the 0th number and one as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers. The function assumes that n >= 0. It requires n\n'
+            ' * to be an integer.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
     def test_toggle(self):
         """Test the "wrap_as_you_type_disabled" setting.
 

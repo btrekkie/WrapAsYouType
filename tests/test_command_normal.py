@@ -524,9 +524,7 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
         """
         view = self._view
         self._set_up_cpp()
-        settings = view.settings()
-        settings.set('wrap_width', 60)
-        settings.set('rulers', [80])
+        view.settings().set('rulers', [60])
 
         self._append(
             '#include <iostream>\n'
