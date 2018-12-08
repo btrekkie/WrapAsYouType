@@ -598,21 +598,23 @@ class WrapFixer(sublime_plugin.TextCommand):
             section, self._prev_char_scope(point, line_region),
             self._view.scope_name(point))
 
-    def _is_first_line_of_paragraph(self, line):
-        """Return whether the specified line matches a paragraph's first line.
+    def _first_line_paragraph(self, line_text):
+        """Return the _settings_parser.paragraphs element matching line_text.
 
-        Return whether the specified line matches a "first_line_regex"
-        entry in _settings_parser.paragraphs.
+        Return the first element in _settings_parser.paragraphs whose
+        "first_line_regex" entry matches the specified line, if any.
 
-        str line - The line.
-        return bool - Whether the line matches.
+        str line_text - The line's text - the contents of the line after
+            removing the line start and any leading and trailing
+            whitespace.
+        return dict<str, object> - The paragraph element.
         """
         for paragraph in self._settings_parser.paragraphs:
-            if paragraph['first_line_regex'].search(line) is not None:
-                return True
-        return False
+            if paragraph['first_line_regex'].search(line_text) is not None:
+                return paragraph
+        return None
 
-    def _paragraph_indent(self, line):
+    def _paragraph_indent(self, line_text):
         """Return the relative indentation of the line after "line".
 
         Return the indentation of the line after the specified line,
@@ -622,12 +624,14 @@ class WrapFixer(sublime_plugin.TextCommand):
         "single_line" entry of elements of the
         "wrap_as_you_type_paragraphs" setting.
 
-        str line - The line.
+        str line_text - The line's text - the contents of the line after
+            removing the line start and any leading and trailing
+            whitespace.
         return str - The indentation.  This consists exclusively of
             whitespace characters.
         """
         for paragraph in self._settings_parser.paragraphs:
-            match = paragraph['first_line_regex'].search(line)
+            match = paragraph['first_line_regex'].search(line_text)
             if match is not None:
                 if paragraph['single_line']:
                     return None
@@ -731,7 +735,7 @@ class WrapFixer(sublime_plugin.TextCommand):
         if not second_line_extent_text:
             return None
 
-        if (self._is_first_line_of_paragraph(second_line_extent_text) or
+        if (self._first_line_paragraph(second_line_extent_text) is not None or
                 not self._are_combined(
                     section, point, first_line_region.begin())):
             return None
@@ -942,6 +946,12 @@ class WrapFixer(sublime_plugin.TextCommand):
         wrap_width = self._wrap_width(section)
         wrap_index = self._advance_by_width(line, wrap_width)
         if wrap_index >= len(i_line_start_i) + word_spans[-1][1]:
+            return (None, None)
+
+        # Check whether this is a single-line paragraph
+        line_text = line[len(i_line_start_i):].rstrip()
+        paragraph = self._first_line_paragraph(line_text)
+        if paragraph is not None and paragraph['single_line']:
             return (None, None)
 
         # Compute the last word on this line and the first word on the next

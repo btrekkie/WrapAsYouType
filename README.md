@@ -676,7 +676,8 @@ following entries:
   with a space.  If `"indent"` and `"indent_group"` entries are both present,
   then the `"indent_group"` entry predominates.
 * `"single_line"` (optional): Whether the paragraph consists of only one line:
-  the line matching `"first_line_regex"`.  Defaults to false.  If
+  the line matching `"first_line_regex"`.  Defaults to false.  WrapAsYouType
+  does not wrap single-line paragraphs that extend beyond the wrap width.  If
   `"single_line"` is true, then the `"indent"` and `"indent_group"` entries may
   not be present.
 
@@ -687,7 +688,7 @@ following space(s).  The indentation has the same length as the match.  Thus,
 the lines after a Javadoc tag are aligned with the word after the tag.
 
 If a line of text matches multiple elements' `"first_line_regex"` patterns, then
-the first matching element's indentation predominates.
+the first matching element predominates.
 
 While the `"wrap_as_you_type_paragraphs"` setting has some utility, it is also
 somewhat problematic from a design perspective.  It doesn't offer the user a way

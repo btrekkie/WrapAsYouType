@@ -263,7 +263,7 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
                     'indent_group': 'indent',
                 },
                 {
-                    'first_line_regex': '^Method description:$',
+                    'first_line_regex': r'^>>>( |$)',
                     'single_line': True,
                 },
             ])
@@ -334,7 +334,7 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
                     'indent_group': 'indent',
                 },
                 {
-                    'first_line_regex': '^Method description:$',
+                    'first_line_regex': r'^>>>( |$)',
                     'single_line': True,
                 },
             ])
@@ -403,13 +403,13 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
         point = view.find(r'>= 0\.', 0).end()
         self._insert(
             point,
-            '\n* \n* Fibonacci - the person who invented the Fibonacci '
+            '\n*\n* Fibonacci - the person who invented the Fibonacci '
             'sequence.')
         expected_text = (
             '    /**\n'
             '     * The "fibonacci" method returns the nth number in the\n'
             '     * Fibonacci sequence. The method assumes that n >= 0.\n'
-            '     * \n'
+            '     *\n'
             '     * Fibonacci - the person who invented the Fibonacci\n'
             '     *     sequence.\n'
             '     * @param n The number in the Fibonacci sequence to\n'
@@ -439,7 +439,7 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
                     'indent_group': 3,
                 },
                 {
-                    'first_line_regex': '^Method description:$',
+                    'first_line_regex': r'^>>>( |$)',
                     'single_line': True,
                 },
             ])
@@ -452,7 +452,7 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
             '    /**\n'
             '     * The "fibonacci" method returns the nth number in the\n'
             '     * Fibonacci sequence. The method assumes that n >= 0.\n'
-            '     * \n'
+            '     *\n'
             '     * Fibonacci - the person who invented the Fibonacci\n'
             '     *     sequence.\n'
             '     * Method - a series of programming instructions\n'
@@ -471,18 +471,29 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
         self.assertEqual(actual_text, expected_text)
 
         # Test a "single_line" value of true
-        point = view.find('The "fibonacci" method', 0).begin()
-        self._insert(point, 'Method description:\n* ')
+        point = view.find(r'enclosing class\.', 0).end()
+        self._insert(
+            point,
+            '\n*\n'
+            '*\n'
+            '* >>> Fibonacci.fibonacci(8);\n'
+            '*')
+        self._insert(point + 14, ' Example:')
+        point = view.find(r'fibonacci\(8\);', 0).end() + 7
+        self._insert(point, ' 21')
         expected_text = (
             '    /**\n'
-            '     * Method description:\n'
             '     * The "fibonacci" method returns the nth number in the\n'
             '     * Fibonacci sequence. The method assumes that n >= 0.\n'
-            '     * \n'
+            '     *\n'
             '     * Fibonacci - the person who invented the Fibonacci\n'
             '     *     sequence.\n'
             '     * Method - a series of programming instructions\n'
             '     *     situated in an enclosing class.\n'
+            '     *\n'
+            '     * Example:\n'
+            '     * >>> Fibonacci.fibonacci(8);\n'
+            '     * 21\n'
             '     * @param n The number in the Fibonacci sequence to\n'
             '     *        compute. A value of 0 indicates the 0th\n'
             '     *        number, 0, a value of 1 indicates the first\n'
@@ -496,19 +507,31 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
                 comment_start_point, comment_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
 
-        point = view.find('The "fibonacci" method', 0).begin()
-        self._delete(point, 23)
-        self._insert(point, 'fibonacci(n) ')
+        # Test a single-line paragraph that extends beyond the wrap width
+        start_point = view.find(r'Fibonacci\.fibonacci\(8\);', 0).begin()
+        end_point = view.find(r'Fibonacci\.fibonacci\(8\);', 0).end()
+        self._backspace(Region(start_point, end_point))
+        self._insert(
+            start_point,
+            'Fibonacci.fibonacci(3) + " " + Fibonacci.fibonacci(4) + " " + '
+            'Fibonacci.fibonacci(5);')
+        point = view.find(r'\* 21', 0).begin() + 2
+        self._delete(point, 2)
+        self._insert(point, '2 3 5')
         expected_text = (
             '    /**\n'
-            '     * Method description:\n'
-            '     * fibonacci(n) returns the nth number in the Fibonacci\n'
-            '     * sequence. The method assumes that n >= 0.\n'
-            '     * \n'
+            '     * The "fibonacci" method returns the nth number in the\n'
+            '     * Fibonacci sequence. The method assumes that n >= 0.\n'
+            '     *\n'
             '     * Fibonacci - the person who invented the Fibonacci\n'
             '     *     sequence.\n'
             '     * Method - a series of programming instructions\n'
             '     *     situated in an enclosing class.\n'
+            '     *\n'
+            '     * Example:\n'
+            '     * >>> Fibonacci.fibonacci(3) + " " + '
+            'Fibonacci.fibonacci(4) + " " + Fibonacci.fibonacci(5);\n'
+            '     * 2 3 5\n'
             '     * @param n The number in the Fibonacci sequence to\n'
             '     *        compute. A value of 0 indicates the 0th\n'
             '     *        number, 0, a value of 1 indicates the first\n'
