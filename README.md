@@ -62,14 +62,12 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 You can install the WrapAsYouType plugin using Package Control.  If you haven't
 already, install Package Control by following the instructions on
 <https://packagecontrol.io/installation>.  Open Sublime and bring up the command
-palette, by pressing Super+Shift+P on macOS or Ctrl+Shift+P on Linux or Windows.
+palette, by pressing Ctrl+Shift+P on Windows or Linux or Super+Shift+P on macOS.
 Select "Package Control: Install Package", then "WrapAsYouType".
 
 Alternatively, you can install WrapAsYouType manually by downloading (cloning)
-it into your Sublime installation's packages directory.  On macOS, this is
-`~/Library/Application Support/Sublime Text 3/Packages`.  On Linux, it is
-`~/.config/sublime-text-3/Packages`.  On Windows, it is
-`%appdata%\Sublime Text 3\Packages`.  (For Sublime 2, replace `"3"` with `"2"`.)
+it into your Sublime installation's packages directory.  You can locate the
+directory by going to "Preferences" > "Browse Packages..." in the menu bar.
 
 # <a id="quick-start"></a>Quick start
 After [installing WrapAsYouType](#installation), open the syntax-specific
@@ -229,8 +227,8 @@ indicates whether we match a given set of
 example, a selector may be used to determine whether the scope `"source.c++
 meta.class.c++ meta.block.c++ comment.block.c"` is a match.  To see the scope
 names at a given point in a document, use the `"show_scope_name"` command.  By
-default, this is bound to Ctrl+Shift+P on macOS and Ctrl+Alt+Shift+P on Linux
-and Windows.
+default, this is bound to Ctrl+Alt+Shift+P on Windows and Linux and Ctrl+Shift+P
+on macOS.
 
 A simple selector (such as `"comment.block"`) matches a scope if any of the
 scope names is equal to the selector, or starts with the selector followed by a
@@ -408,7 +406,7 @@ the earliest matching line start in the earliest matching section type.
 }
 ```
 
-### <a id="example-c"></a>Example, C#
+### <a id="example-c"></a>Example, C# #
 ```json
 {
     "wrap_as_you_type_sections": [
