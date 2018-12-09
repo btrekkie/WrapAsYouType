@@ -30,6 +30,8 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   * [`"wrap_as_you_type_word_regex"`](#wrap_as_you_type_word_regex)
   * [`"wrap_as_you_type_space_between_words"`](#wrap_as_you_type_space_between_words)
   * [`"wrap_as_you_type_paragraphs"`](#wrap_as_you_type_paragraphs)
+    * [Example, DocBlocks with dynamic typing](#example_docblocks_with_dynamic_typing)
+    * [Example, DocBlocks with static typing](#example_docblocks_with_static_typing)
   * [`"wrap_as_you_type_passive"`](#wrap_as_you_type_passive)
   * [`"wrap_as_you_type_disabled"`](#wrap_as_you_type_disabled)
 * [Comparison with Auto (Hard) Wrap](#comparison-with-auto-hard-wrap)
@@ -646,7 +648,7 @@ rule, as in the following example:
 {
     "wrap_as_you_type_paragraphs": [
         {
-            "first_line_regex": "^@([a-zA-Z]+(\\s+|$)|[a-zA-Z]*$)",
+            "first_line_regex": "^@([a-zA-Z]+(\\s+|$)|$)",
             "indent_group": 0
         }
     ]
@@ -709,12 +711,98 @@ matches; it doesn't support multiline constructs.  Because of these
 shortcomings, `"wrap_as_you_type_paragraphs"` might be altered or replaced with
 another setting in a future release.
 
+### <a id="example_docblocks_with_dynamic_typing"></a>Example, DocBlocks with dynamic typing
+
+```json
+{
+    "wrap_as_you_type_paragraphs": [
+        {
+            "first_line_regex":
+                "^@(arg|argument|prop|property|param(\\[(in|out|in,out)\\])?)\\s+([^\\{\\s]\\S*|\\{[^\\}]*\\})\\s+([^\\[\\s]\\S*|\\[[^\\]]*\\])\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex":
+                "^@(exception|result|returns?|throws?)\\s+([^\\{\\s]\\S*|\\{[^\\}]*\\})\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex":
+                "^@(defgroup|link|retval|section|see|snippet|snippetdoc|snippetlineno|source|subsection)\\s+\\S+\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex": "^@([a-zA-Z][a-zA-Z\\[,\\]]*(\\s+|$)|$)",
+            "indent_group": 0
+        }
+    ]
+}
+```
+
+The above setting configures WrapAsYouType to recognize various DocBlock
+formats, such as JSDoc.  However, it is only for formats where data types are
+specified as part of the `@param` and `@return` tags, and where variable names
+are specified as part of the `@param` tag.
+
+The lines after a DocBlock tag are indented so that they line up with the
+textual description for the tag, as in the following JavaScript code:
+
+```javascript
+/**
+ * Computes a square root.
+ * @param  {number} value The value to compute the square root of.  This must be
+ *                        at least 0.
+ * @return {number}       The square root of "value".  The square root is the
+ *                        nonnegative number "s" for which s * s is equal to
+ *                        "value".
+ */
+function sqrt(value) {
+    ...
+}
+```
+
+If a different level of indentation is desired, you can adjust the setting to
+suit your needs.
+
+### <a id="example_docblocks_with_static_typing"></a>Example, DocBlocks with static typing
+
+```json
+{
+    "wrap_as_you_type_paragraphs": [
+        {
+            "first_line_regex":
+                "^@(serialField|param(\\[(in|out|in,out)\\])?)\\s+([^\\[\\s]\\S*|\\[[^\\]]*\\])\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex":
+                "^@(exception|throws?)\\s+([^\\{\\s]\\S*|\\{[^\\}]*\\})\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex":
+                "^@(defgroup|retval|section|see|snippet|snippetdoc|snippetlineno|subsection|tparam)\\s+\\S+\\s+",
+            "indent_group": 0
+        },
+        {
+            "first_line_regex": "^@([a-zA-Z][a-zA-Z\\[,\\]]*(\\s+|$)|$)",
+            "indent_group": 0
+        }
+    ]
+}
+```
+
+This setting configures WrapAsYouType to recognize DocBlock formats such as
+Javadoc, where data types are not specified as part of the `@param` and
+`@return` tags, and where variable names are specified as part of the `@param`
+tag.
+
 ## <a id="wrap_as_you_type_passive"></a>`"wrap_as_you_type_passive"`
 If `"wrap_as_you_type_passive"` is set to true, WrapAsYouType is less aggressive
 with the changes it makes.  In particular, it does not attempt to move words
 from the beginning of the current line to the end of the previous line.
 
-One use case would be when editing structured comments such as docblocks.
+One use case would be when editing structured comments such as DocBlocks.
 Typically, WrapAsYouType can be instructed to respect the formatting of such
 comments by using the
 [`"wrap_as_you_type_paragraphs"` setting](#wrap_as_you_type_paragraphs).

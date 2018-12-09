@@ -253,7 +253,7 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
             'wrap_as_you_type_paragraphs', [
                 {
                     'first_line_regex':
-                        r'^(?P<indent>@([a-zA-Z]+(\s+|$)|[a-zA-Z]*$))',
+                        r'^(?P<indent>@([a-zA-Z]+(\s+|$)|$))',
                     'indent_group': 'indent',
                 },
                 {
