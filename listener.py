@@ -33,18 +33,19 @@ class WrapAsYouTypeListener(sublime_plugin.EventListener):
         self._is_running = True
         try:
             if (not view.settings().get('wrap_as_you_type_disabled') and
-
                     # Don't run the wrap_as_you_type command in response to an
                     # undo command (or a redo command other than redoing
                     # everything)
-                    not view.command_history(1)[0] and
+                    not view.command_history(1)[0]):
 
-                    # It is important to refrain from running the
-                    # wrap_as_you_type command if there is no word wrap fixup
-                    # to perform.  Otherwise, Sublime creates an undo entry for
-                    # every single keystroke.
-                    wrap_fixer.has_edit()):
-                view.run_command('wrap_as_you_type')
+                last_command = view.command_history(0)[0]
+                if (last_command not in ('swap_line_up', 'swap_line_down') and
+                        # It is important to refrain from running the
+                        # wrap_as_you_type command if there is no word wrap
+                        # fixup to perform.  Otherwise, Sublime creates an undo
+                        # entry for every single keystroke.
+                        wrap_fixer.has_edit()):
+                    view.run_command('wrap_as_you_type')
             wrap_fixer.on_post_modification()
         finally:
             self._is_running = False
