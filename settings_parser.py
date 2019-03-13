@@ -316,10 +316,11 @@ class SettingsParser(object):
             if not isinstance(single_line, bool):
                 raise UserFacingError('"single_line" entry must be a boolean')
             if (single_line and
-                    ('indent' in paragraph or indent_group is not None)):
+                    ('indent' in paragraph or 'indent_levels' in paragraph or
+                        indent_group is not None)):
                 raise UserFacingError(
-                    'If "single_line" is true, then the "indent" and '
-                    '"indent_group" entries may not be present')
+                    'If "single_line" is true, then the "indent_levels", '
+                    '"indent", and "indent_group" entries may not be present')
 
             paragraphs.append({
                 'first_line_regex': first_line_regex,

@@ -615,9 +615,6 @@ example, WrapAsYouType is permitted to break up "cookie-cutter" so that
 of the next line.
 
 ## <a id="wrap_as_you_type_paragraphs"></a>`"wrap_as_you_type_paragraphs"`
-Note: The `"wrap_as_you_type_paragraphs"` setting might be removed in a future
-release; see the discussion below.
-
 The `"wrap_as_you_type_paragraphs"` setting provides a way to identify paragraph
 breaks, where these cannot be determined based on the indentation.  One possible
 use case is Javadoc tags, as in the following example:
@@ -684,8 +681,8 @@ following entries:
 * `"single_line"` (optional): Whether the paragraph consists of only one line:
   the line matching `"first_line_regex"`.  Defaults to false.  WrapAsYouType
   does not wrap single-line paragraphs that extend beyond the wrap width.  If
-  `"single_line"` is true, then the `"indent"` and `"indent_group"` entries may
-  not be present.
+  `"single_line"` is true, then the `"indent_levels"`, `"indent"`, and
+  `"indent_group"` entries may not be present.
 
 The above example uses an `"indent_group"` entry to specify the indentation of a
 paragraph's lines after the first.  `"indent_group"` is 0.  This refers to the
@@ -695,19 +692,6 @@ the lines after a Javadoc tag are aligned with the word after the tag.
 
 If a line of text matches multiple elements' `"first_line_regex"` patterns, then
 the first matching element predominates.
-
-While the `"wrap_as_you_type_paragraphs"` setting has some utility, it is also
-somewhat problematic from a design perspective.  It doesn't offer the user a way
-to describe the difference between a line that is part of an earlier paragraph
-and a line that starts a new paragraph.  For example, suppose the user wants to
-create bulleted lists, which consist of items that start with `"- "` and are
-indented with two spaces.  If the user describes these lists using
-`"wrap_as_you_type_paragraphs"`, then WrapAsYouType may interpret the middle of
-a sentence that has a dash as the beginning of a bulleted list item.  In
-addition, `"wrap_as_you_type_paragraphs"` only checks one line of text for
-matches; it doesn't support multiline constructs.  Because of these
-shortcomings, `"wrap_as_you_type_paragraphs"` might be altered or replaced with
-another setting in a future release.
 
 ### <a id="example_docblocks_with_dynamic_typing"></a>Example, DocBlocks with dynamic typing
 
