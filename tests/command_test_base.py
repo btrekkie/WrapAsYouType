@@ -13,10 +13,12 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
     def setUp(self):
         self._view = sublime.active_window().new_file()
         settings = self._view.settings()
+        settings.set('auto_indent', True)
         settings.set('tab_size', 4)
         settings.set('translate_tabs_to_spaces', False)
         settings.set('trim_automatic_white_space', True)
         settings.set('wrap_as_you_type_disabled', False)
+        settings.set('wrap_as_you_type_enter_extends_section', False)
         settings.set('wrap_as_you_type_paragraphs', None)
         settings.set('wrap_as_you_type_passive', None)
         settings.set('wrap_as_you_type_sections', None)
@@ -44,6 +46,8 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
         # Do not alter self._view.sel() directly, because that prevents
         # EventListener.on_selection_modified from being called
         view = self._view
+        if point < 0 or point > view.size():
+            raise ValueError('The specified point is out of range')
         selection = view.sel()
         if len(selection) != 1:
             raise RuntimeError(
@@ -137,3 +141,30 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
                     'selector': 'comment.line',
                 },
             ])
+
+    def _set_up_python(self):
+        """Configure _view to use Python.
+
+        This sets the "wrap_as_you_type_sections" setting to a value
+        appropriate to wrapping Python block and line comments.
+        """
+        self._view.set_syntax_file('Packages/Python/Python.tmLanguage')
+        settings = self._view.settings()
+        settings.set(
+            'wrap_as_you_type_sections', [
+                {
+                    'selector':
+                        'comment.block - punctuation.definition.comment',
+                    'wrap_width': 72
+                },
+                {
+                    'combining_selector':
+                        'source - (comment | constant | entity | invalid | '
+                        'keyword | punctuation | storage | string | variable)',
+                    'line_start': '#',
+                    'selector': 'comment.line',
+                    'wrap_width': 79,
+                },
+            ])
+        settings.set(
+            'wrap_as_you_type_paragraphs', [{'first_line_regex': r'^""?$'}])

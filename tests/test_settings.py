@@ -839,3 +839,291 @@ class TestWrapAsYouTypeSettings(WrapAsYouTypeCommandTestBase):
             Region(
                 comment_start_point, comment_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
+
+    def test_extend_section_cpp(self):
+        """Test WrapAsYouTypeExtendSectionCommand on C++ code."""
+        view = self._view
+        self._set_up_cpp()
+        settings = view.settings()
+        settings.set('rulers', [60])
+        settings.set('wrap_as_you_type_enter_extends_section', True)
+
+        self._append(
+            '#include <iostream>\n'
+            '\n'
+            'using namespace std;\n'
+            '\n'
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence. The Fibonacci sequence begins with 0\n'
+            ' * as the 0th number and 1 as the first number. Every\n'
+            ' * subsequent number is equal to the sum of the two previous\n'
+            ' * numbers.\n'
+            ' */\n'
+            'int fibonacci(int n) {\n'
+            '    // Base case\n'
+            '    if (n == 0) {\n'
+            '        return 0;\n'
+            '    }\n'
+            '\n'
+            '    // Iterative implementation of "fibonacci"\n'
+            '    int cur = 1;\n'
+            '    int prev = 0;\n'
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev; // Store in a temporary variable\n'
+            '        prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n'
+            '    return cur;\n'
+            '}\n'
+            '\n'
+            'int main() {\n'
+            '    cout << "The 8th Fibonacci number is " <<\n'
+            '        fibonacci(8) << "\\n";\n'
+            '    return 0;\n'
+            '}\n')
+
+        # Test block comment
+        comment_start_point = view.find(r'/\*\*', 0).begin()
+        point = view.find(r'Fibonacci sequence\.', 0).end()
+        self._delete(point, 1)
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' *\n'
+            ' * The Fibonacci sequence begins with 0 as the 0th number\n'
+            ' * and 1 as the first number. Every subsequent number is\n'
+            ' * equal to the sum of the two previous numbers.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find(r'numbers\.', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 7
+        self._insert(
+            point, 'Here\'s some background information on Fibonacci:')
+        point = view.find('on Fibonacci:', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 7
+        self._insert(point, '    - Born around 1175.')
+        point = view.find(r'1175\.', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 11
+        self._insert(point, '- The Fibonacci sequence is named after him.')
+        point = view.find(r'named after him\.', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 11
+        self._insert(point, '- Died around 1240-50.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' *\n'
+            ' * The Fibonacci sequence begins with 0 as the 0th number\n'
+            ' * and 1 as the first number. Every subsequent number is\n'
+            ' * equal to the sum of the two previous numbers.\n'
+            ' *\n'
+            ' * Here\'s some background information on Fibonacci:\n'
+            ' *\n'
+            ' *     - Born around 1175.\n'
+            ' *\n'
+            ' *     - The Fibonacci sequence is named after him.\n'
+            ' *\n'
+            ' *     - Died around 1240-50.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('The Fibonacci sequence', 0).begin() - 1
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        point = view.find('- Born', 0).begin() - 2
+        settings.set('trim_automatic_white_space', False)
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        settings.set('trim_automatic_white_space', True)
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' *\n'
+            ' *\n'
+            '  The Fibonacci sequence begins with 0 as the 0th number\n'
+            ' * and 1 as the first number. Every subsequent number is\n'
+            ' * equal to the sum of the two previous numbers.\n'
+            ' *\n'
+            ' * Here\'s some background information on Fibonacci:\n'
+            ' *\n'
+            ' *   \n'
+            ' *     - Born around 1175.\n'
+            ' *\n'
+            ' *     - The Fibonacci sequence is named after him.\n'
+            ' *\n'
+            ' *     - Died around 1240-50.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        # Test line comment
+        comment_start_point = view.find(
+            '    // Iterative implementation', 0).begin()
+        point = view.find('implementation of "fibonacci"', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 15
+        self._insert(
+            point,
+            'At each step, we update the "cur" and "prev" to advance the '
+            'current and previous Fibonacci numbers.')
+        point = view.find(r'previous Fibonacci numbers\.', 0).end()
+        expected_text = (
+            '    // Iterative implementation of "fibonacci"\n'
+            '    //\n'
+            '    // At each step, we update the "cur" and "prev" to\n'
+            '    // advance the current and previous Fibonacci numbers.\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('"cur" and "prev"', 0).end()
+        self._insert(point, ':')
+        self._set_selection_region(Region(point + 1, point + 2))
+        view.run_command('wrap_as_you_type_extend_section')
+        expected_text = (
+            '    // Iterative implementation of "fibonacci"\n'
+            '    //\n'
+            '    // At each step, we update the "cur" and "prev":\n'
+            '    // to advance the current and previous Fibonacci\n'
+            '    // numbers.\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        # Test trailing line comment and ordinary code
+        start_point = view.find('        int next', 0).begin()
+        point = view.find('temporary variable', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 9
+        self._insert(point, 'cout << "Next is " << next << \'\\n\';')
+        point = view.find('next << \'\\\\n\';', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        point += 9
+        self._insert(point, 'cout << "Current is " << cur << \'\\n\';')
+        expected_text = (
+            '        int next = cur + prev; // Store in a temporary variable\n'
+            '        cout << "Next is " << next << \'\\n\';\n'
+            '        cout << "Current is " << cur << \'\\n\';\n'
+            '        prev = cur;\n'
+            '        cur = next;\n')
+        actual_text = view.substr(
+            Region(start_point, start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+    def test_extend_section_python(self):
+        """Test WrapAsYouTypeExtendSectionCommand on Python code."""
+        # This method tests an empty line start string
+        view = self._view
+        self._set_up_python()
+        view.settings().set('wrap_as_you_type_enter_extends_section', True)
+
+        self._append(
+            'def fibonacci(n):\n'
+            '    """Return the nth number in the Fibonacci sequence."""\n'
+            '    # Base case\n'
+            '    if n == 0:\n'
+            '        return 0\n'
+            '\n'
+            '    # Iterative implementation of "fibonacci"\n'
+            '    cur = 1\n'
+            '    prev = 0\n'
+            '    for i in range(1, n):\n'
+            '        cur, prev = cur + prev, cur\n'
+            '    return cur\n'
+            '\n'
+            'print(\'The 8th Fibonacci number is {:d}\'.format(fibonacci(8)))'
+            '\n')
+
+        comment_start_point = view.find('    """', 0).begin()
+        point = view.find(r'Fibonacci sequence\.', 0).end()
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        self._insert(point + 2, '    Assume that n >= 0.')
+        expected_text = (
+            '    """Return the nth number in the Fibonacci sequence.\n'
+            '\n'
+            '    Assume that n >= 0.\n'
+            '    """\n'
+            '    # Base case\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find(r'Assume that', 0).begin() - 1
+        self._insert(
+            point,
+            ' The Fibonacci sequence begins with 0 as the 0th number and 1 as '
+            'the first number. Every subsequent number is equal to the sum of '
+            'the two previous numbers.')
+        expected_text = (
+            '    """Return the nth number in the Fibonacci sequence.\n'
+            '\n'
+            '    The Fibonacci sequence begins with 0 as the 0th number and 1 '
+            'as the\n'
+            '    first number. Every subsequent number is equal to the sum '
+            'of the two\n'
+            '    previous numbers. Assume that n >= 0.\n'
+            '    """\n'
+            '    # Base case\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find(r'Assume that', 0).begin() - 1
+        self._delete(point, 1)
+        self._set_selection_point(point)
+        view.run_command('wrap_as_you_type_extend_section')
+        view.run_command('wrap_as_you_type_extend_section')
+        expected_text = (
+            '    """Return the nth number in the Fibonacci sequence.\n'
+            '\n'
+            '    The Fibonacci sequence begins with 0 as the 0th number and 1 '
+            'as the\n'
+            '    first number. Every subsequent number is equal to the sum '
+            'of the two\n'
+            '    previous numbers.\n'
+            '\n'
+            '    Assume that n >= 0.\n'
+            '    """\n'
+            '    # Base case\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)

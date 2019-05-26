@@ -1367,6 +1367,103 @@ class WrapFixer(sublime_plugin.TextCommand):
             for e in edits_gen:
                 self._perform_edit(edit, e)
 
+    def _section_to_extend(self, point):
+        """Compute the section we should extend, if any.
+
+        Compute the section that contains "point", if it is appropriate
+        to insert a line start string in response to executing a
+        "wrap_as_you_type_extend_section" command where the beginning of
+        the selection cursor is at the point. This returns a pair
+        consisting of the section, formatted like the elements of
+        _settings_parser.sections, and the line start. It returns
+        (None, None) if we should not insert a line start string.
+
+        int point - The point.
+        return tuple<dict<str, object>, str> - The result.
+        """
+        view = self._view
+        line_region = view.line(point)
+        line = view.substr(line_region)
+        prev_char_scope = self._prev_char_scope(point, line_region)
+        next_char_scope = view.scope_name(point)
+
+        for section in self._settings_parser.sections:
+            for line_start in section['allowed_line_starts']:
+                indent = self._section_indent(line, line_start)
+                if (indent is not None and self._matches_selector(
+                        section, prev_char_scope, next_char_scope)):
+                    # We have identified the section that contains the point.
+                    # Now we decide whether we should extend the section.
+                    if (point >=
+                            line_region.begin() +
+                            len(indent) + len(line_start) and
+                            self._combine_extent(
+                                section, point, line_region.begin()) ==
+                            line_region.begin()):
+                        return (section, line_start)
+                    else:
+                        return (None, None)
+        return (None, None)
+
+    def should_extend_section(self):
+        """Return whether we should insert a line start string.
+
+        Return whether it is appropriate to insert a line start string
+        in response to a "wrap_as_you_type_extend_section" command.
+        """
+        selection = self._view.sel()
+        return (
+            len(selection) == 1 and
+            self._section_to_extend(selection[0].begin())[0] is not None)
+
+    def extend_section(self, edit):
+        """Insert a newline and the current section's line start.
+
+        If the beginning of the selection cursor is in a wrappable
+        section that extends to the beginning of the line, insert a
+        newline and the section's line start string, along with the
+        appropriate indentation. Otherwise, just insert a newline
+        followed by the appropriate indentation.
+
+        sublime.Edit edit - The Edit object to use for the edit.
+        """
+        view = self._view
+        selection = self._view.sel()
+        if len(selection) != 1:
+            view.run_command('insert', {'characters': '\n'})
+            return
+        point = selection[0].begin()
+        section, line_start = self._section_to_extend(point)
+        if section is None:
+            view.run_command('insert', {'characters': '\n'})
+            return None
+
+        line_region = view.line(point)
+        line = view.substr(line_region)
+        i_line_start_i = self._i_line_start_i(line, line_start)
+        settings = view.settings()
+        if settings.get('auto_indent', False):
+            length = min(len(i_line_start_i), point - line_region.begin())
+            insert_str = '\n{0:s}'.format(i_line_start_i[:length])
+        else:
+            insert_str = '\n{0:s}{1:s}'.format(
+                self._section_indent(line, line_start), line_start)
+        if selection[0].empty():
+            view.insert(edit, point, insert_str)
+        else:
+            view.replace(edit, selection[0], insert_str)
+            selection.clear()
+            selection.add(Region(point + len(insert_str)))
+
+        # This isn't exactly the same behavior as "trim_automatic_white_space",
+        # but it's a reasonable approximation
+        if (settings.get('trim_automatic_white_space', False) and
+                line_region.begin() + len(i_line_start_i) == point):
+            match = WrapFixer._TRAILING_WHITESPACE_REGEX.search(i_line_start_i)
+            if match.start() < match.end():
+                view.erase(
+                    edit, Region(line_region.begin() + match.start(), point))
+
     def _on_change_passive(self):
         """Respond to a change in the "wrap_as_you_type_passive" setting."""
         if self._settings_parser.is_passive:
@@ -1413,6 +1510,8 @@ class WrapFixer(sublime_plugin.TextCommand):
             return (
                 'contents' in command_args and
                 '\n' in command_args['contents'])
+        elif command_name == 'wrap_as_you_type_extend_section':
+            return True
         else:
             return False
 

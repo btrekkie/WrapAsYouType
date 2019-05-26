@@ -32,6 +32,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   * [`"wrap_as_you_type_paragraphs"`](#wrap_as_you_type_paragraphs)
     * [Example, DocBlocks with dynamic typing](#example_docblocks_with_dynamic_typing)
     * [Example, DocBlocks with static typing](#example_docblocks_with_static_typing)
+  * [`"wrap_as_you_type_enter_extends_section"`](#wrap_as_you_type_enter_extends_section)
   * [`"wrap_as_you_type_passive"`](#wrap_as_you_type_passive)
   * [`"wrap_as_you_type_disabled"`](#wrap_as_you_type_disabled)
 * [Comparison with Auto (Hard) Wrap](#comparison-with-auto-hard-wrap)
@@ -778,6 +779,17 @@ This setting configures WrapAsYouType to recognize DocBlock formats such as
 Javadoc, where data types are not specified as part of the `@param` and
 `@return` tags, and where variable names are specified as part of the `@param`
 tag.
+
+## <a id="wrap_as_you_type_enter_extends_section"></a>`"wrap_as_you_type_enter_extends_section"`
+If `"wrap_as_you_type_enter_extends_section"` is set to true, pressing the enter
+key inserts both a newline and the current section's line start. This is useful
+for extending a block comment or a sequence of line comments. You can still use
+Shift+enter to get the default newline behavior.
+
+More precisely, if the selection cursor is in a wrappable section and this
+section extends to the beginning of the line, then pressing enter inserts a
+newline followed by the section's line start string, along with the appropriate
+indentation.
 
 ## <a id="wrap_as_you_type_passive"></a>`"wrap_as_you_type_passive"`
 If `"wrap_as_you_type_passive"` is set to true, WrapAsYouType is less aggressive

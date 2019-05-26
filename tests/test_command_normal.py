@@ -237,33 +237,6 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
                 comment_start_point, comment_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
 
-    def _set_up_python(self):
-        """Configure _view to use Python.
-
-        This sets the "wrap_as_you_type_sections" setting to a value
-        appropriate to wrapping Python block and line comments.
-        """
-        self._view.set_syntax_file('Packages/Python/Python.tmLanguage')
-        settings = self._view.settings()
-        settings.set(
-            'wrap_as_you_type_sections', [
-                {
-                    'selector':
-                        'comment.block - punctuation.definition.comment',
-                    'wrap_width': 72
-                },
-                {
-                    'combining_selector':
-                        'source - (comment | constant | entity | invalid | '
-                        'keyword | punctuation | storage | string | variable)',
-                    'line_start': '#',
-                    'selector': 'comment.line',
-                    'wrap_width': 79,
-                },
-            ])
-        settings.set(
-            'wrap_as_you_type_paragraphs', [{'first_line_regex': r'^""?$'}])
-
     def test_python_block_comments(self):
         """Test WrapAsYouTypeCommand on edits to Python block comments."""
         view = self._view

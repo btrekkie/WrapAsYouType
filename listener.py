@@ -1,5 +1,6 @@
 import sys
 
+import sublime
 import sublime_plugin
 
 if sys.version_info[0] >= 3:
@@ -55,3 +56,17 @@ class WrapAsYouTypeListener(sublime_plugin.EventListener):
 
     def on_close(self, view):
         WrapFixer.clear_instance(view)
+
+    def on_query_context(self, view, key, operator, operand, match_all):
+        if key != 'wrap_as_you_type_extend_section':
+            return None
+        else:
+            result = WrapFixer.instance(view).should_extend_section()
+            if operator == sublime.OP_EQUAL:
+                return result == operand
+            elif operator == sublime.OP_NOT_EQUAL:
+                return result != operand
+            else:
+                return (
+                    operator == sublime.OP_NOT_REGEX_MATCH or
+                    operator == sublime.OP_NOT_REGEX_CONTAINS)

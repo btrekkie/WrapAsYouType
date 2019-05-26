@@ -1,0 +1,110 @@
+[
+    {
+        "command": "wrap_as_you_type_extend_section",
+        "context": [
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            },
+            {
+                "key": "wrap_as_you_type_extend_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["enter"]
+    },
+    {
+        "command": "wrap_as_you_type_extend_section",
+        "context": [
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            },
+            {
+                "key": "wrap_as_you_type_extend_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["keypad_enter"]
+    },
+
+    // Some default key binding entries for Sublime. In certain contexts, we
+    // should use the default bindings rather than running the
+    // "wrap_as_you_type_extend_section" command.
+    {
+        "command": "commit_completion",
+        "context": [
+            {
+                "key": "auto_complete_visible"
+            },
+            {
+                "key": "setting.auto_complete_commit_on_tab",
+                "operand": false
+            },
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["enter"]
+    },
+    {
+        "command": "find_next",
+        "context": [
+            {
+                "key": "panel",
+                "operand": "find"
+            },
+            {
+                "key": "panel_has_focus"
+            },
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["enter"]
+    },
+    {
+        "command": "find_next",
+        "context": [
+            {
+                "key": "panel",
+                "operand": "replace"
+            },
+            {
+                "key": "panel_has_focus"
+            },
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["enter"]
+    },
+    {
+        "command": "hide_panel",
+        "context": [
+            {
+                "key": "panel",
+                "operand": "incremental_find"
+            },
+            {
+                "key": "panel_has_focus"
+            },
+            {
+                "key": "setting.wrap_as_you_type_enter_extends_section",
+                "operand": true,
+                "operator": "equal"
+            }
+        ],
+        "keys": ["enter"]
+    }
+]
