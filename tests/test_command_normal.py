@@ -432,7 +432,8 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
         """
         view = self._view
         self._set_up_cpp()
-        view.settings().set('rulers', [60])
+        settings = view.settings()
+        settings.set('rulers', [60])
 
         self._append(
             '#include <iostream>\n'
@@ -484,6 +485,32 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
             ' * previous numbers.\n'
             ' * The function assumes that n >= 0.\n'
             ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        # This tests whether WrapAsYouType deletes the preceding newline
+        comment_start_point = view.find('    // Iterative', 0).begin()
+        settings.set('auto_indent', False)
+        point = view.find('Iterative implementation', 0).end()
+        self._delete(point, 1)
+        self._insert(point, '\n    ')
+        expected_text = (
+            '    // Iterative implementation\n'
+            '    of "fibonacci"\n'
+            '    int cur = 1;\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('of "fibonacci"', 0).begin()
+        self._backspace(Region(point - 4, point))
+        expected_text = (
+            '    // Iterative implementation\n'
+            'of "fibonacci"\n'
+            '    int cur = 1;\n')
         actual_text = view.substr(
             Region(
                 comment_start_point, comment_start_point + len(expected_text)))

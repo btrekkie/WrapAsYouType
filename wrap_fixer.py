@@ -818,6 +818,14 @@ class WrapFixer(sublime_plugin.TextCommand):
                 not self._are_combined(
                     section, prev_line_region.begin(), point)):
             return False
+
+        # If the preceding line break was inserted by the user pressing the
+        # enter key, then preserve it
+        regions = self._view.get_regions(
+            'wrap_as_you_type_explicit_line_break')
+        for region in regions:
+            if region.begin() == prev_line_region.end():
+                return False
         return True
 
     def _erase_preceding_line_break_edit(self, point):
