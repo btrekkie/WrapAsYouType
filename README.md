@@ -191,7 +191,7 @@ should set it as a syntax-specific setting, by going to "Preferences" >
 {
     "wrap_as_you_type_sections": [
         {
-            "line_start": " * ",
+            "allowed_line_starts": ["* ", "*\t"],
             "selector": "comment.block - punctuation.definition.comment"
         },
         {
@@ -329,7 +329,7 @@ causing WrapAsYouType to wrap all triple-quoted strings, not just docstrings.
 {
     "wrap_as_you_type_sections": [
         {
-            "line_start": " * ",
+            "allowed_line_starts": ["* ", "*\t"],
             "selector": "comment.block - punctuation.definition.comment"
         },
         {
@@ -367,7 +367,7 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "line_start": " * ",
+            "allowed_line_starts": ["* ", "*\t"],
             "selector": "comment.block - punctuation.definition.comment"
         }
     ]
@@ -379,7 +379,7 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "line_start": " * ",
+            "allowed_line_starts": ["* ", "*\t"],
             "selector":
                 "comment.block - (punctuation.definition.comment.begin | punctuation.definition.comment.end)"
         },
@@ -412,7 +412,7 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "line_start": " * ",
+            "allowed_line_starts": ["* ", "*\t"],
             "selector":
                 "comment.block - (comment.block.documentation | punctuation.definition.comment)"
         },
@@ -455,8 +455,8 @@ shouldn't be too difficult to take an example for a similar syntax and modify it
 to work with your syntax.
 
 In languages like C++, if you don't like starting each line of a block comment
-with an asterisk, then remove `"line_start": " * ",` from the appropriate
-example.  You should also add the following setting:
+with an asterisk, then remove `"allowed_line_starts": ["* ", "*\t"],` from the
+appropriate example.  You should also add the following setting:
 
 ```json
 {
