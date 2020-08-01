@@ -32,6 +32,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
   * [`"wrap_as_you_type_paragraphs"`](#wrap_as_you_type_paragraphs)
     * [Example, DocBlocks with dynamic typing](#example_docblocks_with_dynamic_typing)
     * [Example, DocBlocks with static typing](#example_docblocks_with_static_typing)
+    * [Example, Google-style Python docstrings](#example_google_style_python_docstrings)
   * [`"wrap_as_you_type_enter_extends_section"`](#wrap_as_you_type_enter_extends_section)
   * [`"wrap_as_you_type_passive"`](#wrap_as_you_type_passive)
   * [`"wrap_as_you_type_disabled"`](#wrap_as_you_type_disabled)
@@ -779,6 +780,27 @@ This setting configures WrapAsYouType to recognize DocBlock formats such as
 Javadoc, where data types are not specified as part of the `@param` and
 `@return` tags, and where variable names are specified as part of the `@param`
 tag.
+
+### <a id="example_google_style_python_docstrings"></a>Example, Google-style Python docstrings
+
+```json
+{
+    "wrap_as_you_type_paragraphs": [
+        {
+            "first_line_regex": "^(\\*?\\*?[a-zA-Z_][a-zA-Z_0-9]*|[a-zA-Z_][a-zA-Z_0-9]*\\[.+\\]|[a-zA-Z_][a-zA-Z_0-9]* \\([^\\)]+\\)): ",
+            "indent_levels": 1
+        },
+        {
+            "first_line_regex": "^((>>>|\\.\\.\\.)( |$)|<BLANKLINE>$)",
+            "single_line": true
+        },
+        {
+            "first_line_regex": "^(\"\"?|''?)$",
+            "single_line": true
+        }
+    ]
+}
+```
 
 ## <a id="wrap_as_you_type_enter_extends_section"></a>`"wrap_as_you_type_enter_extends_section"`
 If `"wrap_as_you_type_enter_extends_section"` is set to true, pressing the enter
