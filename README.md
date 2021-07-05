@@ -16,13 +16,12 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 * [Description](#description)
 * [Settings](#settings)
   * [`"wrap_as_you_type_sections"`](#wrap_as_you_type_sections)
-    * [Example, C, C++, Go, JavaScript, Objective-C, PHP, Scala, and similar](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
-    * [Example, Python in Sublime 3](#example-python-in-sublime-3)
+    * [Example, C, C++, Go, Java, JavaScript, Objective-C, PHP, Scala, and similar](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
+    * [Example, Python in Sublime 3 and 4](#example-python-in-sublime-3-and-4)
     * [Example, Python in Sublime 2](#example-python-in-sublime-2)
     * [Example, Rust](#example-rust)
     * [Example, wrap the entire document](#example-wrap-the-entire-document)
     * [Example, CSS](#example-css)
-    * [Example, Java](#example-java)
     * [Example, Bash, R, Ruby, and similar](#example-bash-r-ruby-and-similar)
     * [Example, C#](#example-c)
     * [Example, Perl](#example-perl)
@@ -39,7 +38,7 @@ WrapAsYouType to operate; see the ["Quick start"](#quick-start) section.
 * [Comparison with Auto (Hard) Wrap](#comparison-with-auto-hard-wrap)
 
 # <a id="features"></a>Features
-* Compatible with Sublime Text 2 and 3.
+* Compatible with Sublime Text 2, 3, and 4.
 * Performs hard word wrapping in real time.
 * Changes to the middle of a paragraph can result in reflowing the rest of the
   paragraph.
@@ -83,23 +82,23 @@ To do so, click one of the following links, copy-paste the example configuration
 into your syntax-specific settings, and save.
 
 * [Bash](#example-bash-r-ruby-and-similar)
-* [C](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
-* [C++](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
+* [C](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
+* [C++](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
 * [C#](#example-c)
 * [CSS](#example-css)
-* [Go](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
-* [Java](#example-java)
-* [JavaScript](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
-* [Objective-C](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
+* [Go](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
+* [Java](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
+* [JavaScript](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
+* [Objective-C](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
 * [Perl](#example-perl)
-* [PHP](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
+* [PHP](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
 * [Plain text](#example-wrap-the-entire-document)
 * [Python in Sublime 2](#example-python-in-sublime-2)
-* [Python in Sublime 3](#example-python-in-sublime-3)
+* [Python in Sublime 3 and 4](#example-python-in-sublime-3-and-4)
 * [R](#example-bash-r-ruby-and-similar)
 * [Ruby](#example-bash-r-ruby-and-similar)
 * [Rust](#example-rust)
-* [Scala](#example-c-c-go-javascript-objective-c-php-scala-and-similar)
+* [Scala](#example-c-c-go-java-java-script-objective-c-php-scala-and-similar)
 * [Other](#additional-notes)
 
 # <a id="description"></a>Description
@@ -187,13 +186,14 @@ of where in the document to perform word wrapping.  You must set
 should set it as a syntax-specific setting, by going to "Preferences" >
 "Settings - Syntax Specific" in the menu bar.
 
-### <a id="example-c-c-go-javascript-objective-c-php-scala-and-similar"></a>Example, C, C++, Go, JavaScript, Objective-C, PHP, Scala, and similar
+### <a id="example-c-c-go-java-java-script-objective-c-php-scala-and-similar"></a>Example, C, C++, Go, Java, JavaScript, Objective-C, PHP, Scala, and similar
 ```json
 {
     "wrap_as_you_type_sections": [
         {
             "allowed_line_starts": ["* ", "*\t"],
-            "selector": "comment.block - punctuation.definition.comment"
+            "selector":
+                "comment.block - (punctuation.definition.comment.begin | punctuation.definition.comment.end)"
         },
         {
             "combining_selector":
@@ -225,8 +225,8 @@ following entries:
 
 The location of a section is described using Sublime selectors.  A selector
 indicates whether we match a given set of
-[scope names](https://www.sublimetext.com/docs/3/scope_naming.html).  For
-example, a selector may be used to determine whether the scope `"source.c++
+[scope names](https://www.sublimetext.com/docs/scope_naming.html).  For example,
+a selector may be used to determine whether the scope `"source.c++
 meta.class.c++ meta.block.c++ comment.block.c"` is a match.  To see the scope
 names at a given point in a document, use the `"show_scope_name"` command.  By
 default, this is bound to Ctrl+Alt+Shift+P on Windows and Linux and Ctrl+Shift+P
@@ -258,7 +258,7 @@ various code elements; i.e. it only matches whitespace.  This instructs
 WrapAsYouType to combine a sequence of line comments separated by nothing but
 whitespace into a single section.
 
-### <a id="example-python-in-sublime-3"></a>Example, Python in Sublime 3
+### <a id="example-python-in-sublime-3-and-4"></a>Example, Python in Sublime 3 and 4
 ```json
 {
     "wrap_as_you_type_sections": [
@@ -283,8 +283,8 @@ whitespace into a single section.
 }
 ```
 
-This example applies to Python files in version 3 of Sublime Text.  Here, we
-specify different `"wrap_width"` values for block comments and line comments.
+This example applies to Python files in versions 3 and 4 of Sublime Text.  Here,
+we specify different `"wrap_width"` values for block comments and line comments.
 This way, we wrap line comments at 79 columns and block comments at 72 columns,
 per the recommendations in [PEP 8](https://www.python.org/dev/peps/pep-0008/).
 
@@ -331,7 +331,8 @@ causing WrapAsYouType to wrap all triple-quoted strings, not just docstrings.
     "wrap_as_you_type_sections": [
         {
             "allowed_line_starts": ["* ", "*\t"],
-            "selector": "comment.block - punctuation.definition.comment"
+            "selector":
+                "comment.block - (punctuation.definition.comment.begin | punctuation.definition.comment.end)"
         },
         {
             "allowed_line_starts": ["// ", "/// ", "//! "],
@@ -369,26 +370,8 @@ the earliest matching line start in the earliest matching section type.
     "wrap_as_you_type_sections": [
         {
             "allowed_line_starts": ["* ", "*\t"],
-            "selector": "comment.block - punctuation.definition.comment"
-        }
-    ]
-}
-```
-
-### <a id="example-java"></a>Example, Java
-```json
-{
-    "wrap_as_you_type_sections": [
-        {
-            "allowed_line_starts": ["* ", "*\t"],
             "selector":
                 "comment.block - (punctuation.definition.comment.begin | punctuation.definition.comment.end)"
-        },
-        {
-            "combining_selector":
-                "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
-            "line_start": "//",
-            "selector": "comment.line"
         }
     ]
 }
@@ -415,19 +398,20 @@ the earliest matching line start in the earliest matching section type.
         {
             "allowed_line_starts": ["* ", "*\t"],
             "selector":
-                "comment.block - (comment.block.documentation | punctuation.definition.comment)"
+                "comment.block - (comment.block.documentation | punctuation.definition.comment.begin | punctuation.definition.comment.end)"
         },
         {
             "combining_selector":
                 "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "///",
-            "selector": "comment.block.documentation"
+            "selector":
+                "comment.line.documentation | comment.block.documentation"
         },
         {
             "combining_selector":
                 "source - (comment | constant | entity | invalid | keyword | punctuation | storage | string | variable)",
             "line_start": "//",
-            "selector": "comment.line"
+            "selector": "comment.line - comment.line.documentation"
         }
     ]
 }
@@ -438,7 +422,8 @@ the earliest matching line start in the earliest matching section type.
 {
     "wrap_as_you_type_sections": [
         {
-            "selector": "comment.block - punctuation.definition.comment"
+            "selector":
+                "comment.block - entity.name.tag - punctuation.definition.comment"
         },
         {
             "combining_selector":

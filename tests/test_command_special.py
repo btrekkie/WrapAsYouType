@@ -17,7 +17,8 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
                     'line_start': ' * ',
                     'selector':
                         'comment.block - (comment.block.documentation | '
-                        'punctuation.definition.comment)',
+                        'punctuation.definition.comment.begin | '
+                        'punctuation.definition.comment.end)',
                 },
                 {
                     # For kicks, put the line start in an allowed_line_starts
@@ -27,14 +28,16 @@ class TestWrapAsYouTypeCommandSpecial(WrapAsYouTypeCommandTestBase):
                     'combining_selector':
                         'source - (comment | constant | entity | invalid | '
                         'keyword | punctuation | storage | string | variable)',
-                    'selector': 'comment.block.documentation',
+                    'selector':
+                        'comment.line.documentation | '
+                        'comment.block.documentation',
                 },
                 {
                     'combining_selector':
                         'source - (comment | constant | entity | invalid | '
                         'keyword | punctuation | storage | string | variable)',
                     'line_start': '//',
-                    'selector': 'comment.line',
+                    'selector': 'comment.line - comment.line.documentation',
                 },
             ])
         settings.set('rulers', [60, 80])

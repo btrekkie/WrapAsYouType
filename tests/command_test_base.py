@@ -131,7 +131,9 @@ class WrapAsYouTypeCommandTestBase(unittest.TestCase):
                 {
                     'line_start': ' * ',
                     'selector':
-                        'comment.block - punctuation.definition.comment',
+                        'comment.block - '
+                        '(punctuation.definition.comment.begin | '
+                        'punctuation.definition.comment.end)',
                 },
                 {
                     'combining_selector':
