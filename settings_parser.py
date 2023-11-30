@@ -96,7 +96,7 @@ class SettingsParser(object):
     # View _view - The View whose settings we are parsing.
 
     # The default value for word_regex
-    DEFAULT_WORD_REGEX = re.compile(r'\S+')
+    DEFAULT_WORD_REGEX = re.compile(r'[\S\xa0]+')
 
     def __init__(self, view):
         self._view = view

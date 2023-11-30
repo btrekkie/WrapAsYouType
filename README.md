@@ -489,8 +489,8 @@ line breaks.  When matched against a non-empty string with no leading or
 trailing whitespace, it identifies all of the words in that line of text.  We
 obtain a list of non-overlapping words by scanning a line of text from beginning
 to end, looking for matches.  `"wrap_as_you_type_word_regex"` defaults to
-`"\\S+"`, which defines a "word" as a maximal sequence of non-whitespace
-characters.
+`"[\\S\xa0]+"`, which defines a "word" as a maximal sequence of non-whitespace
+(and non-breaking space) characters.
 
 `"wrap_as_you_type_word_regex"` may match a string that has a space in it.  This
 prevents WrapAsYouType from splitting that string at the internal space.

@@ -615,3 +615,94 @@ class TestWrapAsYouTypeCommandNormal(WrapAsYouTypeCommandTestBase):
         actual_text = view.substr(
             Region(block_start_point, block_start_point + len(expected_text)))
         self.assertEqual(actual_text, expected_text)
+
+    def test_non_breaking_space(self):
+        """Test WrapAsYouTypeCommand with non-breaking spaces.
+
+        Test that WrapAsYouTypeCommand does not break lines at
+        non-breaking spaces.
+        """
+        view = self._view
+        self._set_up_cpp()
+        view.settings().set('rulers', [60])
+
+        self._append(
+            '#include <iostream>\n'
+            '\n'
+            'using namespace std;\n'
+            '\n'
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.\n'
+            ' */\n'
+            'int fibonacci(int n) {\n'
+            '    // Base case\n'
+            '    if (n == 0) {\n'
+            '        return 0;\n'
+            '    }\n'
+            '\n'
+            '    // Iterative implementation of "fibonacci"\n'
+            '    int cur = 1;\n'
+            '    int prev = 0;\n'
+            '    for (int i = 1; i < n; i++) {\n'
+            '        int next = cur + prev;\n'
+            '        prev = cur;\n'
+            '        cur = next;\n'
+            '    }\n'
+            '    return cur;\n'
+            '}\n'
+            '\n'
+            'int main() {\n'
+            '    cout << "The 8th Fibonacci number is " <<\n'
+            '        fibonacci(8) << "\\n";\n'
+            '    return 0;\n'
+            '}\n')
+
+        comment_start_point = view.find(r'/\*\*', 0).begin()
+        point = view.find(r'Fibonacci sequence\.', 0).end()
+        self._insert(point, '  The function assumes that n\xa0>=\xa00.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence.  The function assumes that n\xa0>=\xa00.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        point = view.find('The function assumes', 0).begin() - 1
+        self._insert(
+            point,
+            'The Fibonacci sequence begins with the value 0 as the 0th number '
+            'and the value 1 as the first number. Every subsequent number is '
+            'equal to the sum of the two previous numbers.')
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence. The Fibonacci sequence begins with\n'
+            ' * the value 0 as the 0th number and the value 1 as the\n'
+            ' * first number. Every subsequent number is equal to the sum\n'
+            ' * of the two previous numbers. The function assumes that\n'
+            ' * n\xa0>=\xa00.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
+
+        start_point = view.find('the value 1', 0).begin() - 1
+        end_point = start_point + 10
+        self._backspace(Region(start_point, end_point))
+        expected_text = (
+            '/**\n'
+            ' * The "fibonacci" function returns the nth number in the\n'
+            ' * Fibonacci sequence. The Fibonacci sequence begins with\n'
+            ' * the value 0 as the 0th number and 1 as the first number.\n'
+            ' * Every subsequent number is equal to the sum of the two\n'
+            ' * previous numbers. The function assumes that n\xa0>=\xa00.\n'
+            ' */\n')
+        actual_text = view.substr(
+            Region(
+                comment_start_point, comment_start_point + len(expected_text)))
+        self.assertEqual(actual_text, expected_text)
